@@ -1,11 +1,12 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
+import re
 
 st.title("🏨 ИИ арқылы отель нөмірін брондау жүйесі")
-st.write("Шарттарды (мысалы: 'балконы жоқ', 'тыныш', 'отбасылық') терең түсінетін ақылды жүйе.")
+st.write("Нағыз ИИ тәрізді сұрауларды (санды, шартты, сипаттаманы) автоматты түрде талдайтын жүйе.")
 
-# 1. Деректер базасы мен 15 нөмірді құру функциясы
+# 1. Деректер базасы мен 15 нөмірді жасау
 def init_db():
     conn = sqlite3.connect('hotel_system.db')
     cursor = conn.cursor()
@@ -53,43 +54,47 @@ def get_rooms():
 
 df = get_rooms()
 
-# 2. ИИ Мәтіндік іздеу интерфейсі
+# 2. Пайдаланушы енгізу жолағы
 st.subheader("🤖 ИИ Смарт Іздеу Ассистенті")
 user_query = st.text_input(
-    "Қажеттілігіңізді еркін түрде жазыңыз:", 
-    placeholder="Мысалы: балконы жоқ, тыныш аймақ, немесе отбасылық"
+    "Қажеттілігіңізді толық жазыңыз:", 
+    placeholder="Мысалы: 4 адамдық нөмір немесе балконы жоқ тыныш бөлме"
 )
 
-# Бүйірлік панель сүзгілері
-st.sidebar.header("🔍 Қосымша параметрлер")
-max_price = st.sidebar.slider("Максималды баға ($):", 30, 600, 200)
-min_capacity = st.sidebar.slider("Адам саны:", 1, 5, 1)
+# Бастапқы DataFrame
+filtered = df.copy()
 
-# Бастапқы іріктеу
-filtered = df[(df['price_per_night'] <= max_price) & (df['capacity'] >= min_capacity)]
-
-# 3. Мәтінді талдау және шарттарды түсіну логикасы (NLP)
+# 3. Нағыз ИИ тәрізді мәтінді автоматты талдау (Smart NLP Parser)
 if user_query:
     q = user_query.lower()
     
-    # Балкон шарттарын тексеру (теріс және оң мәндер)
+    # Адам санын автоматты түрде анықтау (мысалы: "4 адамдық", "2 орынды", "3 адам")
+    capacity_match = re.search(r'(\d+)\s*(адам|орын|кісі)', q)
+    if capacity_match:
+        cap_val = int(capacity_match.group(1))
+        # Нақты сол адам санына тең немесе көбірек нөмірлерді аламыз
+        filtered = filtered[filtered['capacity'] >= cap_val]
+    
+    # Бағаны автоматты түрде анықтау (мысалы: "100 доллардан кем", "50 доллар")
+    price_match = re.search(r'(\d+)\s*(\$|доллар|тенге|тг)', q)
+    if price_match:
+        price_val = float(price_match.group(1))
+        if 'кем' in q or 'арзан' in q or 'до' in q or 'тек' in q:
+            filtered = filtered[filtered['price_per_night'] <= price_val]
+
+    # Балкон шарттарын қатаң тексеру
     if 'балконы жоқ' in q or 'балконсыз' in q or 'балкон жоқ' in q:
         filtered = filtered[filtered['has_balcony'] == 0]
-    elif 'балкон' in q or 'балконы бар' in q:
+    elif 'балконы бар' in q or ('балкон' in q and 'жоқ' not in q):
         filtered = filtered[filtered['has_balcony'] == 1]
         
     # Тыныш аймақ шарты
     if 'тыныш' in q or 'демалу' in q:
         filtered = filtered[filtered['description'].str.lower().str.contains('тыныш|демалу')]
-        
-    # Отбасы шарты
-    if 'отбасы' in q or 'family' in q or 'үлкен' in q:
-        filtered = filtered[(filtered['capacity'] >= 3) | (filtered['room_type'].str.lower().str.contains('family|suite'))]
 
 st.write(f"### 🎯 Сіздің сұрауыңызға сай табылған нөмірлер ({len(filtered)}):")
 
 if not filtered.empty:
-    # Кестеде has_balcony мәнін түсінікті ету үшін өзгертеміз
     display_df = filtered.copy()
     display_df['has_balcony'] = display_df['has_balcony'].apply(lambda x: 'Иә' if x == 1 else 'Жоқ')
     st.dataframe(display_df[['room_type', 'price_per_night', 'capacity', 'has_balcony', 'description']])
