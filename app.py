@@ -179,10 +179,3 @@ if not st.session_state.logged_in:
                     st.sidebar.error("⚠ Бұл логин қазірдің өзінде тіркелген!")
                 conn.close()
             else:
-                st.sidebar.warning("Барлық міндетті өрістерді толтырыңыз!")
-    else:
-        st.sidebar.subheader("Аккаунтқа кіру")
-        log_user = st.sidebar.text_input("Логин:", key="log_u")
-        log_pass = st.sidebar.text_input("Құпия сөз:", type="password", key="log_p")
-        
-        if st
