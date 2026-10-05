@@ -4,12 +4,9 @@ import pandas as pd
 import re
 
 # Беттің конфигурациясы
-st.set_page_config(page_title="Smart Hotel AI Assistant", page_icon="🏨", layout="wide")
+st.set_page_config(page_title="Smart Hotel — Отель Брондау", page_icon="🏨", layout="wide")
 
-st.title("🏨 Smart Hotel — ИИ Чат Ассистенті")
-st.write("Қонақүй нөмірлерін табу үшін төмендегі чат терезесіне қажеттілігіңізді жазыңыз.")
-
-# 1. 100 нөмірді генерациялау базасы
+# 1. 100 нөмірді генерациялау базасы (101-ден 200-ге дейін)
 def init_db():
     conn = sqlite3.connect('hotel_system.db')
     cursor = conn.cursor()
@@ -78,86 +75,94 @@ def get_rooms():
 
 df = get_rooms()
 
-# 2. Бүйірлік панель сүзгілері
-st.sidebar.header("🎛️ Қосымша параметрлер")
+# 2. Сессияны басқару (Іздеу сұранысын сақтау үшін)
+if "chat_query" not in st.session_state:
+    st.session_state.chat_query = ""
+
+# 3. БҮЙІРЛІК ПАНЕЛЬ — ИИ Ассистент чат терезесі
+st.sidebar.markdown("## 🤖 ИИ Ассистент Чаты")
+st.sidebar.write("Қажеттілігіңізді жазыңыз, ИИ нөмірлерді сүзіп көрсетеді:")
+
+# Чат арқылы сұрау енгізу
+user_input = st.sidebar.text_input("Мысалы: 4 адамдық, арзан, балконы жоқ", value=st.session_state.chat_query)
+
+if st.sidebar.button("Іздеуді орындау"):
+    st.session_state.chat_query = user_input
+
+if st.sidebar.button("Барлық бөлмелерді көрсету"):
+    st.session_state.chat_query = ""
+    st.rerun()
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🎛️ Қосымша сүзгілер")
 filter_balcony = st.sidebar.selectbox("Балкон жағдайы:", ["Барлығы", "Балконы бар", "Балконы жоқ"])
-max_sidebar_price = st.sidebar.slider("Максималды баға ($):", 40, 650, 650)
+max_price = st.sidebar.slider("Максималды баға ($):", 40, 650, 650)
 
-# 3. Чат тарихын сақтау (Session State)
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "Сәлеметсіз бе! Мен отельдің ақылды ассистентімін. Маған қажетті нөмірді (мысалы: *'105 комната'*, *'4 адамдық'*, *'арзан бөлме'* немесе *'балконы жоқ'*) жазып сұраңыз."}
-    ]
+# 4. НІГІЗГІ БЕТ — Бөлмелерді әдемі карточкалармен көрсету
+st.title("🏨 Smart Hotel — Нөмірлер Каталогы")
+st.write("Қонақүйіміздің барлық 100 заманауи нөмірі (101-ден 200-ге дейін).")
 
-# Бұрынғы хабарламаларды экранда көрсету
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+# Сүзу логикасы
+filtered = df[df['price_per_night'] <= max_price]
 
-# 4. Чат терезесіне енгізу (Chat Input Box)
-if user_query := st.chat_input("Хабарламаңызды осында жазыңыз..."):
-    # Пайдаланушы жазған хатты қосу
-    st.session_state.messages.append({"role": "user", "content": user_query})
-    with st.chat_message("user"):
-        st.markdown(user_query)
+if filter_balcony == "Балконы бар":
+    filtered = filtered[filtered['has_balcony'] == 1]
+elif filter_balcony == "Балконы жоқ":
+    filtered = filtered[filtered['has_balcony'] == 0]
 
-    # Деректерді сүзу логикасы
-    filtered = df[df['price_per_night'] <= max_sidebar_price]
-
-    if filter_balcony == "Балконы бар":
-        filtered = filtered[filtered['has_balcony'] == 1]
-    elif filter_balcony == "Балконы жоқ":
-        filtered = filtered[filtered['has_balcony'] == 0]
-
-    q = user_query.lower()
-    
-    room_num_match = re.search(r'(\d{3})', q)
+# ИИ чат арқылы келген сұрауды талдау
+active_query = st.session_state.chat_query.lower()
+if active_query:
+    room_num_match = re.search(r'(\d{3})', active_query)
     if room_num_match:
         target_num = room_num_match.group(1)
         filtered = filtered[filtered['room_type'].str.contains(target_num)]
     
-    capacity_match = re.search(r'(\d+)\s*(адам|орын|кісі)', q)
+    capacity_match = re.search(r'(\d+)\s*(адам|орын|кісі)', active_query)
     if capacity_match:
         cap_val = int(capacity_match.group(1))
         filtered = filtered[filtered['capacity'] >= cap_val]
     
-    if 'арзан' in q or 'бюджет' in q or 'тиімді' in q:
+    if 'арзан' in active_query or 'бюджет' in active_query or 'тиімді' in active_query:
         filtered = filtered[filtered['price_per_night'] <= 80]
-    elif 'қымбат' in q or 'люкс' in q or 'премиум' in q:
+    elif 'қымбат' in active_query or 'люкс' in active_query or 'премиум' in active_query:
         filtered = filtered[filtered['price_per_night'] >= 200]
 
-    price_match = re.search(r'(\d+)\s*(\$|доллар|тенге|тг)', q)
+    price_match = re.search(r'(\d+)\s*(\$|доллар|тенге|тг)', active_query)
     if price_match:
         price_val = float(price_match.group(1))
-        if 'кем' in q or 'арзан' in q or 'ден төмен' in q or 'до' in q:
+        if 'кем' in active_query or 'арзан' in active_query or 'ден төмен' in active_query or 'до' in active_query:
             filtered = filtered[filtered['price_per_night'] <= price_val]
 
-    if 'балконы жоқ' in q or 'балконсыз' in q or 'балкон жоқ' in q:
+    if 'балконы жоқ' in active_query or 'балконсыз' in active_query or 'балкон жоқ' in active_query:
         filtered = filtered[filtered['has_balcony'] == 0]
-    elif 'балконы бар' in q or ('балкон' in q and 'жоқ' not in q):
+    elif 'балконы бар' in active_query or ('балкон' in active_query and 'жоқ' not in active_query):
         filtered = filtered[filtered['has_balcony'] == 1]
         
-    if 'тыныш' in q or 'демалу' in q:
+    if 'тыныш' in active_query or 'демалу' in active_query:
         filtered = filtered[filtered['description'].str.lower().str.contains('тыныш|демалу')]
+        
+    st.info(f"🤖 ИИ Ассистент түсінді: «{st.session_state.chat_query}» шарттары бойынша ізделінді.")
 
-    # Жауапты генерациялау
-    with st.chat_message("assistant"):
-        if not filtered.empty:
-            response_text = f"✅ Сіздің сұрауыңыз бойынша **{len(filtered)}** нөмір табылды:"
-            st.markdown(response_text)
-            
-            # Карточкалар түрінде шығару
-            for _, row in filtered.head(6).iterrows(): # Көп болса алғашқы 6-ын көрсетіп тұрады
-                with st.container(border=True):
-                    st.markdown(f"🛏️ **{row['room_type']}** | Бағасы: **${row['price_per_night']}** | Сыйымдылығы: **{row['capacity']} адам** | Балкон: **{'Иә 🌅' if row['has_balcony'] == 1 else 'Жоқ ❌'}**")
-                    st.write(row['description'])
-            
-            if len(filtered) > 6:
-                st.info(f"Және тағы басқа {len(filtered) - 6} нөмір бар. Нақтырақ іздеп көріңіз.")
+st.write(f"### 🎯 Табылған нөмірлер саны: {len(filtered)}")
+
+# 5. Нөмірлерді 2 бағанды әдемі Карточкалар (Cards) түрінде шығару
+if not filtered.empty:
+    cols = st.columns(2)
+    for index, row in filtered.reset_index().iterrows():
+        col = cols[index % 2]
+        with col:
+            with st.container(border=True):
+                st.subheader(f"🛏️ {row['room_type']}")
+                st.write(f"**Сипаттамасы:** {row['description']}")
                 
-            assistant_reply = f"Табылған нөмірлер саны: {len(filtered)}"
-        else:
-            assistant_reply = "Өкінішке қарай, бұл талаптарға сай ешқандай нөмір табылмады. Басқаша сипаттап көріңізші."
-            st.markdown(assistant_reply)
-            
-        st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Бағасы", f"${row['price_per_night']}")
+                m2.metric("Сиымдылығы", f"{row['capacity']} адам")
+                balc_status = "Иә 🌅" if row['has_balcony'] == 1 else "Жоқ ❌"
+                m3.metric("Балкон", balc_status)
+                
+                if st.button(f"Брондау ({row['room_type']})", key=f"book_{row['id']}"):
+                    st.success(f"🎉 Құттықтаймыз! Сіз сәтті түрде **{row['room_type']}** нөмірін брондадыңыз!")
+else:
+    st.warning("Өкінішке қарай, бұл талаптарға сай ешқандай нөмір табылмады. Іздеу шарттарын өңгеріп көріңіз.")
