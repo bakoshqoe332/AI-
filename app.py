@@ -4,9 +4,9 @@ import pandas as pd
 import re
 
 st.title("🏨 ИИ арқылы отель нөмірін брондау жүйесі")
-st.write("100 түрлі нөмірді қамтитын кеңейтілген ақылды іздеу жүйесі.")
+st.write("100 түрлі нөмірі бар ақылды іздеу жүйесі (101, 102, 103...).")
 
-# 1. 100 нөмірді автоматты түрде генерациялайтын және базаға қосатын функция
+# 1. 100 нөмірді генерациялау (101-ден 200-ге дейін атау беру)
 def init_db():
     conn = sqlite3.connect('hotel_system.db')
     cursor = conn.cursor()
@@ -22,8 +22,7 @@ def init_db():
         )
     ''')
     
-    # 100 түрлі нөмір тізімін генерациялау
-    room_types = [
+    room_categories = [
         ("Standard Single", 40.0, 45.0, 1, 0, "Бір адамға арналған ықшам және қолжетімді стандартты нөмір, балконы жоқ"),
         ("Standard Double", 65.0, 80.0, 2, 0, "Екі адамға арналған жайлы стандартты нөмір"),
         ("Standard Twin", 70.0, 85.0, 2, 0, "Екі бөлек төсегі бар стандартты бөлме"),
@@ -33,31 +32,30 @@ def init_db():
         ("Deluxe Quiet Zone", 125.0, 155.0, 2, 1, "Қонақүйдің ең тыныш аймағында орналасқан демалыс бөлмесі"),
         ("Suite Family", 200.0, 260.0, 4, 1, "Үлкен отбасыға арналған кең люкс нөмір, балконы бар"),
         ("Executive Suite", 270.0, 350.0, 3, 1, "Бизнес саяхатшыларға арналған жоғары деңгейдегі премиум люкс"),
-        ("Presidential Suite", 450.0, 600.0, 5, 1, "Жеке террасасы мен барлық элитті жағдайлары бар президенттік нөмір"),
-        ("Studio Apartment", 100.0, 130.0, 2, 1, "Ішінде шағын асүйі мен балконы бар студия нөмір"),
-        ("Penthouse", 480.0, 700.0, 4, 1, "Соңғы қабатта орналасқан сәнді пентхаус және панорама")
+        ("Presidential Suite", 450.0, 600.0, 5, 1, "Жеке террасасы мен барлық элитті жағдайлары бар президенттік нөмір")
     ]
     
     sample_rooms = []
-    id_counter = 1
+    room_number = 101  # 101-ден бастаймыз
     
-    # 100 бөлме шыққанша цикл арқылы әртүрлі вариацияда генерациялаймыз
-    while id_counter <= 100:
-        base = room_types[(id_counter - 1) % len(room_types)]
-        r_type = f"{base[0]} #{id_counter}"
-        # Бағаны әр бөлме үшін сәл өзгертіп әртараптандырамыз
-        price = round(base[1] + ((id_counter * 3) % 25), 2)
+    while room_number <= 200: # 101 мен 200 аралығы (барлығы 100 бөлме)
+        cat_index = (room_number - 101) % len(room_categories)
+        base = room_categories[cat_index]
+        
+        # Атауы: "101 комната (Standard Single)" немесе жай ғана "101 комната"
+        r_type = f"{room_number} комната ({base[0]})"
+        price = round(base[1] + (((room_number - 100) * 3) % 30), 2)
         capacity = base[3]
         balcony = base[4]
-        desc = f"{base[5]}. Заманауи жабдықталған таза және жайлы бөлме."
+        desc = f"{base[5]}. Таза, жарық және заманауи жабдықталған нөмір."
         
-        # Кейбір нөмірлердің балкон қасиетін өзгертіп тұрамыз
-        if id_counter % 5 == 0 and balcony == 1:
+        # Кейбір бөлмелердің балкон қасиетін әртараптандыру
+        if room_number % 4 == 0 and balcony == 1:
             balcony = 0
             desc += " (Балконы жоқ нұсқасы)"
             
         sample_rooms.append((r_type, price, capacity, balcony, desc))
-        id_counter += 1
+        room_number += 1
 
     cursor.executemany('''
         INSERT INTO rooms (room_type, price_per_night, capacity, has_balcony, description)
@@ -79,17 +77,23 @@ df = get_rooms()
 st.subheader("🤖 ИИ Смарт Іздеу Ассистенті")
 user_query = st.text_input(
     "Қажеттілігіңізді толық жазыңыз:", 
-    placeholder="Мысалы: 4 адамдық нөмір, арзан бөлме, немесе балконы жоқ тыныш аймақ"
+    placeholder="Мысалы: 101 комната, 4 адамдық, арзан бөлме, балконы жоқ"
 )
 
 # Бастапқы DataFrame
 filtered = df.copy()
 
-# 3. Кеңейтілген ИИ мәтінді талдау логикасы (NLP Parser)
+# 3. Мәтінді талдау логикасы (NLP Parser)
 if user_query:
     q = user_query.lower()
     
-    # Адам санын автоматты түрде анықтау
+    # Егер нақты бөлме нөмірін іздесе (мысалы: "105", "112 комната")
+    room_num_match = re.search(r'(\d{3})', q)
+    if room_num_match:
+        target_num = room_num_match.group(1)
+        filtered = filtered[filtered['room_type'].str.contains(target_num)]
+    
+    # Адам санын анықтау
     capacity_match = re.search(r'(\d+)\s*(адам|орын|кісі)', q)
     if capacity_match:
         cap_val = int(capacity_match.group(1))
@@ -103,7 +107,7 @@ if user_query:
     elif 'қымбат' in q or 'люкс' in q or 'премиум' in q:
         filtered = filtered[filtered['price_per_night'] >= 250]
 
-    # Нақты бағаны санмен көрсеткенді талдау
+    # Бағаны санмен көрсеткенді талдау
     price_match = re.search(r'(\d+)\s*(\$|доллар|тенге|тг)', q)
     if price_match:
         price_val = float(price_match.group(1))
