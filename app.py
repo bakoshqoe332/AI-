@@ -3,56 +3,29 @@ import sqlite3
 import pandas as pd
 import re
 
-# Конфигурация страницы
+# Беттің конфигурациясы
 st.set_page_config(page_title="TRYP by Wyndham — Отель Брондау", page_icon="🏨", layout="wide")
 
-# Исправленные CSS-стили для идеальной видимости текста и карточек
+# CSS стильдер (Карточкалардың көрінуі мен дизайн)
 st.markdown("""
     <style>
-    /* Шапка сайта */
-    .header-container {
-        background-color: #111e38;
-        padding: 15px 25px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-radius: 8px;
-        margin-bottom: 25px;
-        color: white;
-    }
-    .nav-links {
-        display: flex;
-        gap: 25px;
-        font-size: 14px;
-        font-weight: 600;
-        color: white;
+    .stApp {
+        background-color: #0e1117;
     }
     
-    /* Блоки преимуществ */
-    .amenity-box {
-        background: #111e38;
-        color: white;
-        padding: 15px;
-        border-radius: 8px;
-        text-align: center;
-        font-size: 14px;
-        font-weight: 500;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-
-    /* Принудительный белый фон и темный текст для карточек номеров, чтобы текст не пропадал */
+    /* Бөлме карточкаларының дизайны (Қараңғы режимге ыңғайлы) */
     div[data-testid="stVerticalBlock"] > div.stElementContainer div[data-testid="stContainer"] {
-        background-color: #ffffff !important;
-        color: #111e38 !important;
+        background-color: #161b22 !important;
+        color: #ffffff !important;
         padding: 20px;
         border-radius: 10px;
-        border: 1px solid #dcdcdc;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        border: 1px solid #30363d;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
     
-    /* Стили кнопок бронирования */
+    /* Брондау батырмасы */
     div.stButton > button {
-        background-color: #111e38;
+        background-color: #238636;
         color: white;
         border-radius: 6px;
         border: none;
@@ -62,27 +35,13 @@ st.markdown("""
         transition: 0.3s;
     }
     div.stButton > button:hover {
-        background-color: #1f365c;
+        background-color: #2ea043;
         color: #fff;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Верхняя панель бренда
-st.markdown("""
-    <div class="header-container">
-        <div style="font-weight: 800; font-size: 20px; letter-spacing: 1px;">🏨 TRYP HOTEL</div>
-        <div class="nav-links">
-            <span style="color: #4da6ff; cursor:pointer;">НОМЕРА</span>
-            <span style="cursor:pointer; opacity: 0.8;">РЕСТОРАНЫ</span>
-            <span style="cursor:pointer; opacity: 0.8;">УДОБСТВА</span>
-            <span style="cursor:pointer; opacity: 0.8;">СПЕЦПРЕДЛОЖЕНИЯ</span>
-            <span style="cursor:pointer; opacity: 0.8;">КОНТАКТЫ</span>
-        </div>
-    </div>
-""", unsafe_allow_html=True)
-
-# 1. Генерация 100 номеров по этажам с нарастающей ценой
+# 1. 100 нөмірді қабаттар бойынша және бағасы артатын етіп генерациялау
 def init_db():
     conn = sqlite3.connect('hotel_system.db')
     cursor = conn.cursor()
@@ -155,25 +114,13 @@ def get_rooms():
 
 df = get_rooms()
 
-# Верхние иконки преимуществ
-ac1, ac2, ac3, ac4 = st.columns(4)
-with ac1:
-    st.markdown('<div class="amenity-box">📶 Тегін High-Speed Wi-Fi</div>', unsafe_allow_html=True)
-with ac2:
-    st.markdown('<div class="amenity-box">👑 VIP Қызмет көрсету</div>', unsafe_allow_html=True)
-with ac3:
-    st.markdown('<div class="amenity-box">🍳 Таңғы ас кіреді</div>', unsafe_allow_html=True)
-with ac4:
-    st.markdown('<div class="amenity-box">🕒 Заезд 14:00 / Выезд 12:00</div>', unsafe_allow_html=True)
-
-st.markdown("---")
-
+# 2. Сессия күйін басқару
 if "chat_query" not in st.session_state:
     st.session_state.chat_query = ""
 
-# БОКОВАЯ ПАНЕЛЬ — ИИ Ассистент чат и фильтры
+# 3. БҮЙІРЛІК ПАНЕЛЬ — ИИ Ассистент чаты және фильтрлер
 st.sidebar.markdown("## 🤖 ИИ Ассистент Чаты")
-st.sidebar.write("Қажеттілігіңізді жазыңыз (мысалы: *'1-ші қабат'*, *'9 қабат'*, *'105 комната'*, *'арзан'*):")
+st.sidebar.write("Қажеттілігіңізді жазыңыз (мысалы: *'1-ші қабат'*, *'4 адамға'*, *'105 комната'*, *'арзан'*):")
 
 user_input = st.sidebar.text_input("Сұраныс енгізу:", value=st.session_state.chat_query)
 
@@ -189,10 +136,11 @@ st.sidebar.markdown("### 🎛️ Қосымша сүзгілер")
 filter_balcony = st.sidebar.selectbox("Балкон жағдайы:", ["Барлығы", "Балконы бар", "Балконы жоқ"])
 max_price = st.sidebar.slider("Максималды баға ($):", 40, 750, 750)
 
-# ОСНОВНОЙ КОНТЕНТ
-st.markdown("### 🛏️ Қонақүй нөмірлері (101 — 1010)")
+# 4. НЕГІЗГІ БЕТ — Бөлмелер каталогы
+st.title("🏨 TRYP Hotel — Брондау жүйесі")
 st.write("Барлық 100 заманауи нөмір қабаттар бойынша реттелген. Жоғары қабаттарға қарай баға біртіндеп өседі.")
 
+# Деректерді сүзу
 filtered = df[df['price_per_night'] <= max_price]
 
 if filter_balcony == "Балконы бар":
@@ -200,6 +148,7 @@ if filter_balcony == "Балконы бар":
 elif filter_balcony == "Балконы жоқ":
     filtered = filtered[filtered['has_balcony'] == 0]
 
+# ИИ арқылы келген сұрауды талдау
 active_query = st.session_state.chat_query.lower()
 if active_query:
     floor_match = re.search(r'(\d+)\s*(-ші|-нші|ші|нші)?\s*қабат', active_query)
@@ -250,16 +199,15 @@ if active_query:
 
 st.write(f"### 🎯 Табылған нөмірлер саны: {len(filtered)}")
 
-# Вывод карточек номеров
+# 5. Нөмірлерді заманауи карточкалар түрінде шығару
 if not filtered.empty:
     cols = st.columns(2)
     for index, row in filtered.reset_index().iterrows():
         col = cols[index % 2]
         with col:
             with st.container(border=True):
-                # Дополнительная обертка для темного текста внутри белой карточки
-                st.markdown(f"<h3 style='color: #111e38; margin-bottom: 5px;'>🛏️ {row['room_type']}</h3>", unsafe_allow_html=True)
-                st.markdown(f"<p style='color: #333333;'><b>Сипаттамасы:</b> {row['description']}</p>", unsafe_allow_html=True)
+                st.markdown(f"### 🛏️ {row['room_type']}")
+                st.markdown(f"**Сипаттамасы:** {row['description']}")
                 
                 m1, m2, m3 = st.columns(3)
                 m1.metric("Бағасы", f"${row['price_per_night']}")
