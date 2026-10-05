@@ -1,10 +1,15 @@
+import streamlit as st
+import sqlite3
+import pandas as pd
+
+st.title("🏨 ИИ арқылы отель нөмірін брондау жүйесі")
+st.write("Тез әрі ыңғайлы ИИ іздеу жүйесі.")
+
+# 1. Деректер базасы мен 15 нөмірді автоматты түрде құру
 def init_db():
     conn = sqlite3.connect('hotel_system.db')
     cursor = conn.cursor()
-    
-    # Ескі кестені толығымен өшіріп, жаңадан құру (Барлық 15 нөмір шығуы үшін)
     cursor.execute('DROP TABLE IF EXISTS rooms')
-    
     cursor.execute('''
         CREATE TABLE rooms (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -15,7 +20,6 @@ def init_db():
             description TEXT
         )
     ''')
-    
     sample_rooms = [
         ('Standard Single', 45.0, 1, 0, 'Бір адамға арналған ықшам және жайлы нөмір'),
         ('Standard Double', 70.0, 2, 0, 'Екі адамға арналған стандартты нөмір'),
@@ -37,6 +41,36 @@ def init_db():
         INSERT INTO rooms (room_type, price_per_night, capacity, has_balcony, description)
         VALUES (?, ?, ?, ?, ?)
     ''', sample_rooms)
-    
     conn.commit()
     conn.close()
+
+def get_rooms():
+    init_db()
+    conn = sqlite3.connect('hotel_system.db')
+    df = pd.read_sql_query("SELECT * FROM rooms", conn)
+    conn.close()
+    return df
+
+df = get_rooms()
+
+# 2. ИИ арқылы еркін мәтіндік іздеу өрісі
+st.subheader("🤖 ИИ көмегімен қажетті нөмірді іздеу")
+user_query = st.text_input("Қандай нөмір іздеп жатырсыз?", placeholder="Мысалы: Deluxe, балкон, немесе отбасылық")
+
+# 3. Бүйірлік панель сүзгілері
+st.sidebar.header("🔍 Параметрлер")
+max_price = st.sidebar.slider("Максималды баға ($):", 30, 600, 200)
+min_capacity = st.sidebar.slider("Адам саны:", 1, 5, 1)
+
+# Сүзу логикасы
+filtered = df[(df['price_per_night'] <= max_price) & (df['capacity'] >= min_capacity)]
+
+if user_query:
+    query_lower = user_query.lower()
+    filtered = filtered[
+        filtered['room_type'].str.lower().str.contains(query_lower) |
+        filtered['description'].str.lower().str.contains(query_lower)
+    ]
+
+st.write(f"### 🎯 Табылған нөмірлер ({len(filtered)}):")
+st.dataframe(filtered[['room_type', 'price_per_night', 'capacity', 'has_balcony', 'description']])
