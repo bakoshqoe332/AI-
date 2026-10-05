@@ -6,7 +6,7 @@ import re
 # Беттің конфигурациясы
 st.set_page_config(page_title="Smart Hotel — Отель Брондау", page_icon="🏨", layout="wide")
 
-# 1. 100 нөмірді генерациялау базасы (101-ден 200-ге дейін)
+# 1. 100 нөмірді қабаттар бойынша генерациялау базасы (10 қабат, әр қабатта 10 нөмірден)
 def init_db():
     conn = sqlite3.connect('hotel_system.db')
     cursor = conn.cursor()
@@ -39,25 +39,29 @@ def init_db():
     amenities = ["кондиционер, Wi-Fi және сейф бар", "шағын тоңазытқыш пен жұмыс үстелімен жабдықталған", "ақылды үй жүйесі қосылған", "жылытылатын едені бар жайлы бөлме"]
 
     sample_rooms = []
-    room_number = 101  
     
-    while room_number <= 200:
-        cat_index = (room_number - 101) % len(room_categories)
-        base = room_categories[cat_index]
-        
-        r_type = f"{room_number} комната ({base[0]})"
-        price = round(base[1] + (((room_number * 7) % 35)), 2)
-        capacity = base[3]
-        balcony = 1 if base[4] == 1 or (room_number % 2 == 0) else 0
-        
-        v_choice = views[room_number % len(views)]
-        a_choice = amenities[(room_number * 3) % len(amenities)]
-        balc_text = "Жеке балконы бар." if balcony == 1 else "Балконы жоқ."
-        
-        desc = f"{base[5]}. {v_choice}. Ішінде {a_choice}. {balc_text}"
+    # 10 қабат, әр қабатта 10 нөмір (101-110, 201-210, ..., 1001-1010)
+    for floor in range(1, 11):
+        for room_idx in range(1, 11):
+            # Егер 10-қабат болса 1001-ден басталады, ал 1-қабат 101-ден
+            room_number = floor * 100 + room_idx if floor < 10 else 1000 + room_idx
             
-        sample_rooms.append((r_type, price, capacity, balcony, desc))
-        room_number += 1
+            cat_index = (room_number % len(room_categories))
+            base = room_categories[cat_index]
+            
+            floor_name = f"{floor}-ші қабат" if floor < 10 else "10-ші қабат (Пентхаус)"
+            r_type = f"{room_number} комната ({base[0]})"
+            price = round(base[1] + ((room_number * 3) % 40), 2)
+            capacity = base[3]
+            balcony = 1 if base[4] == 1 or (room_number % 2 == 0) else 0
+            
+            v_choice = views[room_number % len(views)]
+            a_choice = amenities[(room_number * 3) % len(amenities)]
+            balc_text = "Жеке балконы бар." if balcony == 1 else "Балконы жоқ."
+            
+            desc = f"{floor_name}. {base[5]}. {v_choice}. Ішінде {a_choice}. {balc_text}"
+                
+            sample_rooms.append((r_type, price, capacity, balcony, desc))
 
     cursor.executemany('''
         INSERT INTO rooms (room_type, price_per_night, capacity, has_balcony, description)
@@ -75,16 +79,15 @@ def get_rooms():
 
 df = get_rooms()
 
-# 2. Сессияны басқару (Іздеу сұранысын сақтау үшін)
+# 2. Сессия күйін басқару
 if "chat_query" not in st.session_state:
     st.session_state.chat_query = ""
 
-# 3. БҮЙІРЛІК ПАНЕЛЬ — ИИ Ассистент чат терезесі
+# 3. БҮЙІРЛІК ПАНЕЛЬ — ИИ Ассистент чаты және қосымша сүзгілер
 st.sidebar.markdown("## 🤖 ИИ Ассистент Чаты")
-st.sidebar.write("Қажеттілігіңізді жазыңыз, ИИ нөмірлерді сүзіп көрсетеді:")
+st.sidebar.write("Қажеттілігіңізді жазыңыз (мысалы: *'1-ші қабат'*, *'105 комната'*, *'4 адамдық'*):")
 
-# Чат арқылы сұрау енгізу
-user_input = st.sidebar.text_input("Мысалы: 4 адамдық, арзан, балконы жоқ", value=st.session_state.chat_query)
+user_input = st.sidebar.text_input("Сұраныс жазу:", value=st.session_state.chat_query)
 
 if st.sidebar.button("Іздеуді орындау"):
     st.session_state.chat_query = user_input
@@ -96,13 +99,13 @@ if st.sidebar.button("Барлық бөлмелерді көрсету"):
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🎛️ Қосымша сүзгілер")
 filter_balcony = st.sidebar.selectbox("Балкон жағдайы:", ["Барлығы", "Балконы бар", "Балконы жоқ"])
-max_price = st.sidebar.slider("Максималды баға ($):", 40, 650, 650)
+max_price = st.sidebar.slider("Максималды баға ($):", 40, 700, 700)
 
-# 4. НІГІЗГІ БЕТ — Бөлмелерді әдемі карточкалармен көрсету
+# 4. НЕГІЗГІ БЕТ — Бөлмелерді әдемі карточкалармен көрсету
 st.title("🏨 Smart Hotel — Нөмірлер Каталогы")
-st.write("Қонақүйіміздің барлық 100 заманауи нөмірі (101-ден 200-ге дейін).")
+st.write("Қонақүйіміздің барлық 100 нөмірі қабаттар бойынша реттелген (101-ден бастап 10 қабат).")
 
-# Сүзу логикасы
+# Деректерді сүзу
 filtered = df[df['price_per_night'] <= max_price]
 
 if filter_balcony == "Балконы бар":
@@ -110,14 +113,41 @@ if filter_balcony == "Балконы бар":
 elif filter_balcony == "Балконы жоқ":
     filtered = filtered[filtered['has_balcony'] == 0]
 
-# ИИ чат арқылы келген сұрауды талдау
+# ИИ арқылы келген сұрауды талдау
 active_query = st.session_state.chat_query.lower()
 if active_query:
-    room_num_match = re.search(r'(\d{3})', active_query)
-    if room_num_match:
+    # Қабат бойынша іздеу (мысалы: "1 қабат", "1-ші қабат")
+    floor_match = re.search(r'(\d+)\s*(-ші|-нші|ші|нші)?\s*қабат', active_query)
+    if floor_match:
+        floor_num = floor_match.group(1)
+        if floor_num == '1':
+            filtered = filtered[filtered['room_type'].str.contains(r'10[1-9]|110')]
+        elif floor_num == '2':
+            filtered = filtered[filtered['room_type'].str.contains(r'20[1-9]|210')]
+        elif floor_num == '3':
+            filtered = filtered[filtered['room_type'].str.contains(r'30[1-9]|310')]
+        elif floor_num == '4':
+            filtered = filtered[filtered['room_type'].str.contains(r'40[1-9]|410')]
+        elif floor_num == '5':
+            filtered = filtered[filtered['room_type'].str.contains(r'50[1-9]|510')]
+        elif floor_num == '6':
+            filtered = filtered[filtered['room_type'].str.contains(r'60[1-9]|610')]
+        elif floor_num == '7':
+            filtered = filtered[filtered['room_type'].str.contains(r'70[1-9]|710')]
+        elif floor_num == '8':
+            filtered = filtered[filtered['room_type'].str.contains(r'80[1-9]|810')]
+        elif floor_num == '9':
+            filtered = filtered[filtered['room_type'].str.contains(r'90[1-9]|910')]
+        elif floor_num == '10':
+            filtered = filtered[filtered['room_type'].str.contains(r'100[1-9]|1010')]
+
+    # Нақты бөлме нөмірін іздеу
+    room_num_match = re.search(r'(\d{3,4})', active_query)
+    if room_num_match and not floor_match:
         target_num = room_num_match.group(1)
         filtered = filtered[filtered['room_type'].str.contains(target_num)]
     
+    # Адам санын анықтау
     capacity_match = re.search(r'(\d+)\s*(адам|орын|кісі)', active_query)
     if capacity_match:
         cap_val = int(capacity_match.group(1))
@@ -128,25 +158,16 @@ if active_query:
     elif 'қымбат' in active_query or 'люкс' in active_query or 'премиум' in active_query:
         filtered = filtered[filtered['price_per_night'] >= 200]
 
-    price_match = re.search(r'(\d+)\s*(\$|доллар|тенге|тг)', active_query)
-    if price_match:
-        price_val = float(price_match.group(1))
-        if 'кем' in active_query or 'арзан' in active_query or 'ден төмен' in active_query or 'до' in active_query:
-            filtered = filtered[filtered['price_per_night'] <= price_val]
-
     if 'балконы жоқ' in active_query or 'балконсыз' in active_query or 'балкон жоқ' in active_query:
         filtered = filtered[filtered['has_balcony'] == 0]
     elif 'балконы бар' in active_query or ('балкон' in active_query and 'жоқ' not in active_query):
         filtered = filtered[filtered['has_balcony'] == 1]
         
-    if 'тыныш' in active_query or 'демалу' in active_query:
-        filtered = filtered[filtered['description'].str.lower().str.contains('тыныш|демалу')]
-        
     st.info(f"🤖 ИИ Ассистент түсінді: «{st.session_state.chat_query}» шарттары бойынша ізделінді.")
 
 st.write(f"### 🎯 Табылған нөмірлер саны: {len(filtered)}")
 
-# 5. Нөмірлерді 2 бағанды әдемі Карточкалар (Cards) түрінде шығару
+# 5. Нөмірлерді 2 бағанды әдемі Карточкалар түрінде шығару
 if not filtered.empty:
     cols = st.columns(2)
     for index, row in filtered.reset_index().iterrows():
