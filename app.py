@@ -206,4 +206,28 @@ else:
     # Жеке кабинеттегі брондаулар тізімін көрсету
     st.sidebar.markdown("### 📋 Менің брондауларым:")
     conn = sqlite3.connect('hotel_system.db')
-    user_bookings = pd.read_sql_query("SELECT room_
+    user_bookings = pd.read_sql_query("SELECT room_type, price, booking_date FROM bookings WHERE username = ?", conn, params=(st.session_state.username,))
+    conn.close()
+    
+    if not user_bookings.empty:
+        for idx, row in user_bookings.iterrows():
+            st.sidebar.info(f"🛏️ **{row['room_type']}**\n💰 Бағасы: ${row['price']}\n📅 Күні: {row['booking_date'][:10]}")
+    else:
+        st.sidebar.write("Әзірге брондалған нөмірлеріңіз жоқ.")
+        
+    if st.sidebar.button("Шығу (Logout)"):
+        st.session_state.logged_in = False
+        st.session_state.username = ""
+        st.session_state.full_name = ""
+        st.rerun()
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("## 🤖 ИИ Ассистент Чаты")
+st.sidebar.write("Қажеттілігіңізді жазыңыз (мысалы: *'1-ші қабат'*, *'4 адамға'*, *'арзан'*):")
+
+user_input = st.sidebar.text_input("Сұраныс енгізу:", value=st.session_state.chat_query)
+
+if st.sidebar.button("Іздеуді орындау"):
+    st.session_state.chat_query = user_input
+
+if
