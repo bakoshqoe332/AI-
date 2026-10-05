@@ -6,14 +6,14 @@ import re
 # Беттің конфигурациясы
 st.set_page_config(page_title="TRYP by Wyndham — Отель Брондау", page_icon="🏨", layout="wide")
 
-# CSS стильдер (Карточкалардың көрінуі мен дизайн)
+# CSS стильдер (Қараңғы режимге ыңғайлы карточкалар мен дизайн)
 st.markdown("""
     <style>
     .stApp {
         background-color: #0e1117;
     }
     
-    /* Бөлме карточкаларының дизайны (Қараңғы режимге ыңғайлы) */
+    /* Бөлме карточкаларының дизайны */
     div[data-testid="stVerticalBlock"] > div.stElementContainer div[data-testid="stContainer"] {
         background-color: #161b22 !important;
         color: #ffffff !important;
@@ -41,7 +41,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 1. 100 нөмірді қабаттар бойынша және бағасы артатын етіп генерациялау
+# 1. 100 нөмірді қабаттар бойынша және шынайы өсетін баға логикасымен генерациялау
 def init_db():
     conn = sqlite3.connect('hotel_system.db')
     cursor = conn.cursor()
@@ -58,16 +58,16 @@ def init_db():
     ''')
     
     room_categories = [
-        ("Standard Single", 45.0, 1, 0, "Бір адамға арналған ықшам және жайлы стандартты нөмір"),
-        ("Standard Double", 65.0, 2, 0, "Екі адамға арналған жарық және таза стандартты нөмір"),
-        ("Standard Twin", 70.0, 2, 0, "Екі бөлек төсегі бар стандартты бөлме"),
-        ("Standard Triple", 90.0, 3, 0, "Үш адамдық кең стандартты нөмір"),
-        ("Deluxe King", 120.0, 2, 1, "Үлкен корольдік төсегі және керемет балконы бар Deluxe нөмір"),
-        ("Deluxe Ocean View", 150.0, 2, 1, "Панорамалық көрінісі мен жеке балконы бар Deluxe"),
-        ("Deluxe Quiet Zone", 130.0, 2, 1, "Қонақүйдің ең тыныш аймағында орналасқан демалыс бөлмесі"),
-        ("Suite Family", 190.0, 4, 1, "Үлкен отбасыға арналған кең люкс нөмір, балконы бар"),
-        ("Executive Suite", 260.0, 3, 1, "Бизнес саяхатшыларға арналған жоғары деңгейдегі премиум люкс"),
-        ("Presidential Suite", 420.0, 5, 1, "Жеке террасасы мен элитті жағдайлары бар президенттік нөмір")
+        ("Standard Single", 40.0, 1, 0, "Бір адамға арналған ықшам және жайлы стандартты нөмір"),
+        ("Standard Double", 60.0, 2, 0, "Екі адамға арналған жарық және таза стандартты нөмір"),
+        ("Standard Twin", 65.0, 2, 0, "Екі бөлек төсегі бар стандартты бөлме"),
+        ("Standard Triple", 85.0, 3, 0, "Үш адамдық кең стандартты нөмір"),
+        ("Deluxe King", 110.0, 2, 1, "Үлкен корольдік төсегі және керемет балконы бар Deluxe нөмір"),
+        ("Deluxe Ocean View", 140.0, 2, 1, "Панорамалық көрінісі мен жеке балконы бар Deluxe"),
+        ("Deluxe Quiet Zone", 125.0, 2, 1, "Қонақүйдің ең тыныш аймағында орналасқан демалыс бөлмесі"),
+        ("Suite Family", 180.0, 4, 1, "Үлкен отбасыға арналған кең люкс нөмір, балконы бар"),
+        ("Executive Suite", 250.0, 3, 1, "Бизнес саяхатшыларға арналған жоғары деңгейдегі премиум люкс"),
+        ("Presidential Suite", 380.0, 5, 1, "Жеке террасасы мен элитті жағдайлары бар президенттік нөмір")
     ]
     
     views = ["Көше жаққа қарайтын терезе", "Ішкі аулаға әдемі көрініс", "Қала орталығына бағытталған панорама", "Саябаққа қарайтын тыныш терезе"]
@@ -82,13 +82,17 @@ def init_db():
             cat_index = (room_idx - 1) % len(room_categories)
             base = room_categories[cat_index]
             
-            floor_extra = (floor - 1) * 7.0
-            price = round(base[1] + floor_extra + ((room_number * 3) % 12), 2)
+            # Қабат жоғарылаған сайын баға салмақты түрде артады (әр қабат үшін +$18, ал 10-қабат/пентхаус үшін үлкен үстеме)
+            floor_extra = (floor - 1) * 18.0
+            if floor == 10:
+                floor_extra += 120.0  # 10-қабат (Пентхаус) шынайы отельдердегідей ерекше қымбат әрі мәртебелі болады
+                
+            price = round(base[1] + floor_extra + ((room_number * 3) % 15), 2)
             
             floor_name = f"{floor}-ші қабат" if floor < 10 else "10-ші қабат (Пентхаус)"
             r_type = f"{room_number} комната ({base[0]})"
             capacity = base[2]
-            balcony = 1 if base[3] == 1 or (floor >= 4) else 0 
+            balcony = 1 if base[3] == 1 or (floor >= 3) else 0 
             
             v_choice = views[room_number % len(views)]
             a_choice = amenities[(room_number * 3) % len(amenities)]
@@ -120,7 +124,7 @@ if "chat_query" not in st.session_state:
 
 # 3. БҮЙІРЛІК ПАНЕЛЬ — ИИ Ассистент чаты және фильтрлер
 st.sidebar.markdown("## 🤖 ИИ Ассистент Чаты")
-st.sidebar.write("Қажеттілігіңізді жазыңыз (мысалы: *'1-ші қабат'*, *'4 адамға'*, *'105 комната'*, *'арзан'*):")
+st.sidebar.write("Қажеттілігіңізді жазыңыз (мысалы: *'1-ші қабат'*, *'10 қабат'*, *'4 адамға'*, *'арзан'*):")
 
 user_input = st.sidebar.text_input("Сұраныс енгізу:", value=st.session_state.chat_query)
 
@@ -134,11 +138,11 @@ if st.sidebar.button("Барлық бөлмелерді көрсету"):
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🎛️ Қосымша сүзгілер")
 filter_balcony = st.sidebar.selectbox("Балкон жағдайы:", ["Барлығы", "Балконы бар", "Балконы жоқ"])
-max_price = st.sidebar.slider("Максималды баға ($):", 40, 750, 750)
+max_price = st.sidebar.slider("Максималды баға ($):", 40, 850, 850)
 
 # 4. НЕГІЗГІ БЕТ — Бөлмелер каталогы
 st.title("🏨 TRYP Hotel — Брондау жүйесі")
-st.write("Барлық 100 заманауи нөмір қабаттар бойынша реттелген. Жоғары қабаттарға қарай баға біртіндеп өседі.")
+st.write("Барлық 100 заманауи нөмір қабаттар бойынша реттелген. Жоғары қабаттарға қарай баға логикалық түрде айтарлықтай өседі.")
 
 # Деректерді сүзу
 filtered = df[df['price_per_night'] <= max_price]
