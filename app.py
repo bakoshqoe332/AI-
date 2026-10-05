@@ -3,21 +3,16 @@ import sqlite3
 import pandas as pd
 import re
 
-# Беттің конфигурациясы
+# Конфигурация страницы
 st.set_page_config(page_title="TRYP by Wyndham — Отель Брондау", page_icon="🏨", layout="wide")
 
-# Премиум дизайн мен стильдер (CSS)
+# Исправленные CSS-стили для идеальной видимости текста и карточек
 st.markdown("""
     <style>
-    /* Негізгі фон мен қаріптер */
-    .stApp {
-        background-color: #f8f9fa;
-    }
-    
-    /* Жоғарғы меню (Header) стилі */
+    /* Шапка сайта */
     .header-container {
         background-color: #111e38;
-        padding: 12px 20px;
+        padding: 15px 25px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -30,10 +25,32 @@ st.markdown("""
         gap: 25px;
         font-size: 14px;
         font-weight: 600;
-        letter-spacing: 0.5px;
+        color: white;
     }
     
-    /* Артық streamlit элементтерін әдемілеу */
+    /* Блоки преимуществ */
+    .amenity-box {
+        background: #111e38;
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    /* Принудительный белый фон и темный текст для карточек номеров, чтобы текст не пропадал */
+    div[data-testid="stVerticalBlock"] > div.stElementContainer div[data-testid="stContainer"] {
+        background-color: #ffffff !important;
+        color: #111e38 !important;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #dcdcdc;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    
+    /* Стили кнопок бронирования */
     div.stButton > button {
         background-color: #111e38;
         color: white;
@@ -48,22 +65,10 @@ st.markdown("""
         background-color: #1f365c;
         color: #fff;
     }
-    
-    /* Ыңғайлы қатынас карточкалары */
-    .amenity-box {
-        background: #111e38;
-        color: white;
-        padding: 15px;
-        border-radius: 8px;
-        text-align: center;
-        font-size: 14px;
-        font-weight: 500;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
     </style>
 """, unsafe_allow_html=True)
 
-# Жоғарғы бренд панелі (Хедер)
+# Верхняя панель бренда
 st.markdown("""
     <div class="header-container">
         <div style="font-weight: 800; font-size: 20px; letter-spacing: 1px;">🏨 TRYP HOTEL</div>
@@ -77,7 +82,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# 1. 100 нөмірді қабаттар бойынша және бағасы артатын етіп генерациялау
+# 1. Генерация 100 номеров по этажам с нарастающей ценой
 def init_db():
     conn = sqlite3.connect('hotel_system.db')
     cursor = conn.cursor()
@@ -111,7 +116,6 @@ def init_db():
 
     sample_rooms = []
     
-    # 10 қабат, әр қабатта 10 нөмір (101-110, 201-210, ..., 1001-1010)
     for floor in range(1, 11):
         for room_idx in range(1, 11):
             room_number = floor * 100 + room_idx if floor < 10 else 1000 + room_idx
@@ -119,7 +123,6 @@ def init_db():
             cat_index = (room_idx - 1) % len(room_categories)
             base = room_categories[cat_index]
             
-            # Қабат жоғарылаған сайын баға біртіндеп өседі
             floor_extra = (floor - 1) * 7.0
             price = round(base[1] + floor_extra + ((room_number * 3) % 12), 2)
             
@@ -152,7 +155,7 @@ def get_rooms():
 
 df = get_rooms()
 
-# Қонақүйдің негізгі артықшылықтары (жоғарғы блок)
+# Верхние иконки преимуществ
 ac1, ac2, ac3, ac4 = st.columns(4)
 with ac1:
     st.markdown('<div class="amenity-box">📶 Тегін High-Speed Wi-Fi</div>', unsafe_allow_html=True)
@@ -165,11 +168,10 @@ with ac4:
 
 st.markdown("---")
 
-# 2. Сессия күйін басқару
 if "chat_query" not in st.session_state:
     st.session_state.chat_query = ""
 
-# 3. БҮЙІРЛІК ПАНЕЛЬ — ИИ Ассистент чаты және фильтрлер
+# БОКОВАЯ ПАНЕЛЬ — ИИ Ассистент чат и фильтры
 st.sidebar.markdown("## 🤖 ИИ Ассистент Чаты")
 st.sidebar.write("Қажеттілігіңізді жазыңыз (мысалы: *'1-ші қабат'*, *'9 қабат'*, *'105 комната'*, *'арзан'*):")
 
@@ -187,11 +189,10 @@ st.sidebar.markdown("### 🎛️ Қосымша сүзгілер")
 filter_balcony = st.sidebar.selectbox("Балкон жағдайы:", ["Барлығы", "Балконы бар", "Балконы жоқ"])
 max_price = st.sidebar.slider("Максималды баға ($):", 40, 750, 750)
 
-# 4. НЕГІЗГІ БЕТ — Бөлмелер каталогы
+# ОСНОВНОЙ КОНТЕНТ
 st.markdown("### 🛏️ Қонақүй нөмірлері (101 — 1010)")
 st.write("Барлық 100 заманауи нөмір қабаттар бойынша реттелген. Жоғары қабаттарға қарай баға біртіндеп өседі.")
 
-# Деректерді сүзу
 filtered = df[df['price_per_night'] <= max_price]
 
 if filter_balcony == "Балконы бар":
@@ -199,7 +200,6 @@ if filter_balcony == "Балконы бар":
 elif filter_balcony == "Балконы жоқ":
     filtered = filtered[filtered['has_balcony'] == 0]
 
-# ИИ арқылы келген сұрауды талдау
 active_query = st.session_state.chat_query.lower()
 if active_query:
     floor_match = re.search(r'(\d+)\s*(-ші|-нші|ші|нші)?\s*қабат', active_query)
@@ -250,15 +250,16 @@ if active_query:
 
 st.write(f"### 🎯 Табылған нөмірлер саны: {len(filtered)}")
 
-# 5. Нөмірлерді заманауи карточкалар түрінде шығару
+# Вывод карточек номеров
 if not filtered.empty:
     cols = st.columns(2)
     for index, row in filtered.reset_index().iterrows():
         col = cols[index % 2]
         with col:
             with st.container(border=True):
-                st.subheader(f"🛏️ {row['room_type']}")
-                st.write(f"**Сипаттамасы:** {row['description']}")
+                # Дополнительная обертка для темного текста внутри белой карточки
+                st.markdown(f"<h3 style='color: #111e38; margin-bottom: 5px;'>🛏️ {row['room_type']}</h3>", unsafe_allow_html=True)
+                st.markdown(f"<p style='color: #333333;'><b>Сипаттамасы:</b> {row['description']}</p>", unsafe_allow_html=True)
                 
                 m1, m2, m3 = st.columns(3)
                 m1.metric("Бағасы", f"${row['price_per_night']}")
