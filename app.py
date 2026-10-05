@@ -13,8 +13,6 @@ st.markdown("""
     .stApp {
         background-color: #0e1117;
     }
-    
-    /* Бөлме карточкаларының дизайны */
     div[data-testid="stVerticalBlock"] > div.stElementContainer div[data-testid="stContainer"] {
         background-color: #161b22 !important;
         color: #ffffff !important;
@@ -23,8 +21,6 @@ st.markdown("""
         border: 1px solid #30363d;
         box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
-    
-    /* Батырмалардың дизайны */
     div.stButton > button {
         background-color: #238636;
         color: white;
@@ -203,7 +199,6 @@ if not st.session_state.logged_in:
 else:
     st.sidebar.success(f"Қош келдіңіз, **{st.session_state.full_name}**!")
     
-    # Жеке кабинеттегі брондаулар тізімін көрсету
     st.sidebar.markdown("### 📋 Менің брондауларым:")
     conn = sqlite3.connect('hotel_system.db')
     user_bookings = pd.read_sql_query("SELECT room_type, price, booking_date FROM bookings WHERE username = ?", conn, params=(st.session_state.username,))
@@ -254,18 +249,38 @@ active_query = st.session_state.chat_query.lower()
 if active_query:
     floor_match = re.search(r'(\d+)\s*(-ші|-нші|ші|нші)?\s*қабат', active_query)
     if floor_match:
-        floor_num = floor_match.group(1)
-        if floor_num == '1':
-            filtered = filtered[filtered['room_type'].str.contains(r'10[1-9]|110')]
-        elif floor_num == '2':
-            filtered = filtered[filtered['room_type'].str.contains(r'20[1-9]|210')]
-        elif floor_num == '3':
-            filtered = filtered[filtered['room_type'].str.contains(r'30[1-9]|310')]
-        elif floor_num == '4':
-            filtered = filtered[filtered['room_type'].str.contains(r'40[1-9]|410')]
-        elif floor_num == '5':
-            filtered = filtered[filtered['room_type'].str.contains(r'50[1-9]|510')]
-        elif floor_num == '6':
-            filtered = filtered[filtered['room_type'].str.contains(r'60[1-9]|610')]
-        elif floor_num == '7':
-            filtered = filtered[filtered['room_type'].str.contains(r'70[1-9]|7
+        floor_num = int(floor_match.group(1))
+        if 1 <= floor_num <= 9:
+            valid_rooms = [f"{floor_num}0{i}" for i in range(1, 10)] + [f"{floor_num}10"]
+            pattern = "|".join(valid_rooms)
+            filtered = filtered[filtered['room_type'].str.contains(pattern)]
+        elif floor_num == 10:
+            valid_rooms = [f"100{i}" for i in range(1, 10)] + ["1010"]
+            pattern = "|".join(valid_rooms)
+            filtered = filtered[filtered['room_type'].str.contains(pattern)]
+
+    room_num_match = re.search(r'(\d{3,4})', active_query)
+    if room_num_match and not floor_match:
+        target_num = room_num_match.group(1)
+        filtered = filtered[filtered['room_type'].str.contains(target_num)]
+    
+    capacity_match = re.search(r'(\d+)\s*(адам|орын|кісі)', active_query)
+    if capacity_match:
+        cap_val = int(capacity_match.group(1))
+        filtered = filtered[filtered['capacity'] >= cap_val]
+    
+    if 'арзан' in active_query or 'бюджет' in active_query or 'тиімді' in active_query:
+        filtered = filtered[filtered['price_per_night'] <= 90]
+    elif 'қымбат' in active_query or 'люкс' in active_query or 'премиум' in active_query:
+        filtered = filtered[filtered['price_per_night'] >= 200]
+
+    if 'балконы жоқ' in active_query or 'балконсыз' in active_query or 'балкон жоқ' in active_query:
+        filtered = filtered[filtered['has_balcony'] == 0]
+    elif 'балконы бар' in active_query or ('балкон' in active_query and 'жоқ' not in active_query):
+        filtered = filtered[filtered['has_balcony'] == 1]
+        
+    st.info(f"🤖 ИИ Ассистент талдады: «{st.session_state.chat_query}» бойынша нөмірлер сүзілді.")
+
+st.write(f"### 🎯 Табылған нөмірлер саны: {len(filtered)}")
+
+# 5. Нөмірлерді карточкалар түрінде шығару және Бронда
