@@ -1,0 +1,30 @@
+import streamlit as st
+import pandas as pd
+
+st.title("🏨 ИИ арқылы отель нөмірін таңдау жүйесі")
+st.write("Клиенттің талабы бойынша ең қолайлы нөмірді таңдаңыз.")
+
+# Деректерді жүктеу
+@st.cache_data
+def load_data():
+    # hotel_bookings.csv файлындағы орташа баға мен басқа параметрлерді қолданамыз
+    return pd.read_csv('Dataset/hotel_bookings.csv')
+
+df = load_data()
+
+# Интерфейс параметрлері
+st.sidebar.header("Параметрлерді таңдау")
+max_price = st.sidebar.slider("Бір түнге максималды баға ($):", 50, 500, 150)
+room_type = st.sidebar.selectbox("Нөмір түрі (Мысалы):", ["Барлығы", "Standard", "Deluxe", "Suite"])
+
+if st.button("Сәйкес нөмірлерді табу"):
+    # Сүзгілеу шарттары
+    filtered_df = df[df['adr'] <= max_price]
+    
+    st.subheader(f"Табылған нөмірлер (Максимум: ${max_price}):")
+    
+    # Нәтиже көрсету
+    if not filtered_df.empty:
+        st.dataframe(filtered_df[['hotel', 'adr', 'market_segment', 'adults', 'children']].head(10))
+    else:
+        st.warning("Бұл баға бойынша бос нөмірлер табылмады.")
