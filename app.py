@@ -176,7 +176,7 @@ if not st.session_state.logged_in:
                     conn.commit()
                     st.sidebar.success("✅ Сәтті тіркелдіңіз! Енді 'Кіру' арқылы кіріңіз.")
                 except sqlite3.IntegrityError:
-                    st.sidebar.error("⚠️️ Бұл логин қазірдің өзінде тіркелген!")
+                    st.sidebar.error("⚠ Бұл логин қазірдің өзінде тіркелген!")
                 conn.close()
             else:
                 st.sidebar.warning("Барлық міндетті өрістерді толтырыңыз!")
@@ -185,49 +185,4 @@ if not st.session_state.logged_in:
         log_user = st.sidebar.text_input("Логин:", key="log_u")
         log_pass = st.sidebar.text_input("Құпия сөз:", type="password", key="log_p")
         
-        if st.sidebar.button("Жүйеге кіру"):
-            conn = sqlite3.connect('hotel_system.db')
-            cursor = conn.cursor()
-            cursor.execute("SELECT full_name, password FROM users WHERE username = ?", (log_user,))
-            user = cursor.fetchone()
-            conn.close()
-            
-            if user and user[1] == hash_password(log_pass):
-                st.session_state.logged_in = True
-                st.session_state.username = log_user
-                st.session_state.full_name = user[0]
-                st.sidebar.success(f"Қош келдіңіз, {user[0]}!")
-                st.rerun()
-            else:
-                st.sidebar.error("❌ Логин или пароль қате!")
-else:
-    st.sidebar.success(f"Қош келдіңіз, **{st.session_state.full_name}**!")
-    
-    # Жеке кабинеттегі брондаулар тізімін көрсету
-    st.sidebar.markdown("### 📋 Менің брондауларым:")
-    conn = sqlite3.connect('hotel_system.db')
-    user_bookings = pd.read_sql_query("SELECT room_type, price, booking_date FROM bookings WHERE username = ?", conn, params=(st.session_state.username,))
-    conn.close()
-    
-    if not user_bookings.empty:
-        for idx, row in user_bookings.iterrows():
-            st.sidebar.info(f"🛏️ **{row['room_type']}**\n💰 Бағасы: ${row['price']}\n📅 Күні: {row['booking_date'][:10]}")
-    else:
-        st.sidebar.write("Әзірге брондалған нөмірлеріңіз жоқ.")
-        
-    if st.sidebar.button("Шығу (Logout)"):
-        st.session_state.logged_in = False
-        st.session_state.username = ""
-        st.session_state.full_name = ""
-        st.rerun()
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("## 🤖 ИИ Ассистент Чаты")
-st.sidebar.write("Қажеттілігіңізді жазыңыз (мысалы: *'1-ші қабат'*, *'4 адамға'*, *'арзан'*):")
-
-user_input = st.sidebar.text_input("Сұраныс енгізу:", value=st.session_state.chat_query)
-
-if st.sidebar.button("Іздеуді орындау"):
-    st.session_state.chat_query = user_input
-
-if st.sidebar.button("Барлық бөлмелерді көрсету
+        if st
