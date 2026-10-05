@@ -4,9 +4,80 @@ import pandas as pd
 import re
 
 # Беттің конфигурациясы
-st.set_page_config(page_title="Smart Hotel — Отель Брондау", page_icon="🏨", layout="wide")
+st.set_page_config(page_title="TRYP by Wyndham — Отель Брондау", page_icon="🏨", layout="wide")
 
-# 1. 100 нөмірді қабаттар бойынша және қабат сайын бағасы артатын етіп генерациялау
+# Премиум дизайн мен стильдер (CSS)
+st.markdown("""
+    <style>
+    /* Негізгі фон мен қаріптер */
+    .stApp {
+        background-color: #f8f9fa;
+    }
+    
+    /* Жоғарғы меню (Header) стилі */
+    .header-container {
+        background-color: #111e38;
+        padding: 12px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        color: white;
+    }
+    .nav-links {
+        display: flex;
+        gap: 25px;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Артық streamlit элементтерін әдемілеу */
+    div.stButton > button {
+        background-color: #111e38;
+        color: white;
+        border-radius: 6px;
+        border: none;
+        padding: 8px 16px;
+        font-weight: 600;
+        width: 100%;
+        transition: 0.3s;
+    }
+    div.stButton > button:hover {
+        background-color: #1f365c;
+        color: #fff;
+    }
+    
+    /* Ыңғайлы қатынас карточкалары */
+    .amenity-box {
+        background: #111e38;
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Жоғарғы бренд панелі (Хедер)
+st.markdown("""
+    <div class="header-container">
+        <div style="font-weight: 800; font-size: 20px; letter-spacing: 1px;">🏨 TRYP HOTEL</div>
+        <div class="nav-links">
+            <span style="color: #4da6ff; cursor:pointer;">НОМЕРА</span>
+            <span style="cursor:pointer; opacity: 0.8;">РЕСТОРАНЫ</span>
+            <span style="cursor:pointer; opacity: 0.8;">УДОБСТВА</span>
+            <span style="cursor:pointer; opacity: 0.8;">СПЕЦПРЕДЛОЖЕНИЯ</span>
+            <span style="cursor:pointer; opacity: 0.8;">КОНТАКТЫ</span>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+
+# 1. 100 нөмірді қабаттар бойынша және бағасы артатын етіп генерациялау
 def init_db():
     conn = sqlite3.connect('hotel_system.db')
     cursor = conn.cursor()
@@ -23,19 +94,19 @@ def init_db():
     ''')
     
     room_categories = [
-        ("Standard Single", 40.0, 1, 0, "Бір адамға арналған ықшам және қолжетімді стандартты нөмір"),
-        ("Standard Double", 60.0, 2, 0, "Екі адамға арналған жайлы стандартты нөмір"),
-        ("Standard Twin", 65.0, 2, 0, "Екі бөлек төсегі бар стандартты бөлме"),
-        ("Standard Triple", 85.0, 3, 0, "Үш адамдық кең стандартты нөмір"),
-        ("Deluxe King", 110.0, 2, 1, "Үлкен корольдік төсегі және керемет балконы бар Deluxe нөмір"),
-        ("Deluxe Ocean View", 135.0, 2, 1, "Теңізге қарайтын панорамалық көрінісі мен балконы бар Deluxe"),
-        ("Deluxe Quiet Zone", 120.0, 2, 1, "Қонақүйдің ең тыныш аймағында орналасқан демалыс бөлмесі"),
-        ("Suite Family", 180.0, 4, 1, "Үлкен отбасыға арналған кең люкс нөмір, балконы бар"),
-        ("Executive Suite", 250.0, 3, 1, "Бизнес саяхатшыларға арналған жоғары деңгейдегі премиум люкс"),
-        ("Presidential Suite", 400.0, 5, 1, "Жеке террасасы мен барлық элитті жағдайлары бар президенттік нөмір")
+        ("Standard Single", 45.0, 1, 0, "Бір адамға арналған ықшам және жайлы стандартты нөмір"),
+        ("Standard Double", 65.0, 2, 0, "Екі адамға арналған жарық және таза стандартты нөмір"),
+        ("Standard Twin", 70.0, 2, 0, "Екі бөлек төсегі бар стандартты бөлме"),
+        ("Standard Triple", 90.0, 3, 0, "Үш адамдық кең стандартты нөмір"),
+        ("Deluxe King", 120.0, 2, 1, "Үлкен корольдік төсегі және керемет балконы бар Deluxe нөмір"),
+        ("Deluxe Ocean View", 150.0, 2, 1, "Панорамалық көрінісі мен жеке балконы бар Deluxe"),
+        ("Deluxe Quiet Zone", 130.0, 2, 1, "Қонақүйдің ең тыныш аймағында орналасқан демалыс бөлмесі"),
+        ("Suite Family", 190.0, 4, 1, "Үлкен отбасыға арналған кең люкс нөмір, балконы бар"),
+        ("Executive Suite", 260.0, 3, 1, "Бизнес саяхатшыларға арналған жоғары деңгейдегі премиум люкс"),
+        ("Presidential Suite", 420.0, 5, 1, "Жеке террасасы мен элитті жағдайлары бар президенттік нөмір")
     ]
     
-    views = ["Көше жаққа қарайтын терезе", "Ішкі аулаға көрініс", "Қала орталығына бағытталған панорама", "Саябаққа қарайтын тыныш терезе"]
+    views = ["Көше жаққа қарайтын терезе", "Ішкі аулаға әдемі көрініс", "Қала орталығына бағытталған панорама", "Саябаққа қарайтын тыныш терезе"]
     amenities = ["кондиционер, Wi-Fi және сейф бар", "шағын тоңазытқыш пен жұмыс үстелімен жабдықталған", "ақылды үй жүйесі қосылған", "жылытылатын едені бар жайлы бөлме"]
 
     sample_rooms = []
@@ -48,18 +119,18 @@ def init_db():
             cat_index = (room_idx - 1) % len(room_categories)
             base = room_categories[cat_index]
             
-            # Қабат жоғарылаған сайын бағаға үстеме қосылады (әр қабат үшін +$4 немесе +$5)
-            floor_extra = (floor - 1) * 6.0
-            price = round(base[1] + floor_extra + ((room_number * 2) % 10), 2)
+            # Қабат жоғарылаған сайын баға біртіндеп өседі
+            floor_extra = (floor - 1) * 7.0
+            price = round(base[1] + floor_extra + ((room_number * 3) % 12), 2)
             
             floor_name = f"{floor}-ші қабат" if floor < 10 else "10-ші қабат (Пентхаус)"
             r_type = f"{room_number} комната ({base[0]})"
             capacity = base[2]
-            balcony = 1 if base[3] == 1 or (floor >= 5) else 0 # 5-қабаттан жоғарылардың көбінде балкон бар
+            balcony = 1 if base[3] == 1 or (floor >= 4) else 0 
             
             v_choice = views[room_number % len(views)]
             a_choice = amenities[(room_number * 3) % len(amenities)]
-            balc_text = "Жеке балконы бар." if balcony == 1 else "Балконы жоқ."
+            balc_text = "Жеке балконы бар 🌅." if balcony == 1 else "Балконы жоқ ❌."
             
             desc = f"{floor_name}. {base[4]}. {v_choice}. Ішінде {a_choice}. {balc_text}"
                 
@@ -81,15 +152,28 @@ def get_rooms():
 
 df = get_rooms()
 
+# Қонақүйдің негізгі артықшылықтары (жоғарғы блок)
+ac1, ac2, ac3, ac4 = st.columns(4)
+with ac1:
+    st.markdown('<div class="amenity-box">📶 Тегін High-Speed Wi-Fi</div>', unsafe_allow_html=True)
+with ac2:
+    st.markdown('<div class="amenity-box">👑 VIP Қызмет көрсету</div>', unsafe_allow_html=True)
+with ac3:
+    st.markdown('<div class="amenity-box">🍳 Таңғы ас кіреді</div>', unsafe_allow_html=True)
+with ac4:
+    st.markdown('<div class="amenity-box">🕒 Заезд 14:00 / Выезд 12:00</div>', unsafe_allow_html=True)
+
+st.markdown("---")
+
 # 2. Сессия күйін басқару
 if "chat_query" not in st.session_state:
     st.session_state.chat_query = ""
 
-# 3. БҮЙІРЛІК ПАНЕЛЬ — ИИ Ассистент чаты және сүзгілер
+# 3. БҮЙІРЛІК ПАНЕЛЬ — ИИ Ассистент чаты және фильтрлер
 st.sidebar.markdown("## 🤖 ИИ Ассистент Чаты")
 st.sidebar.write("Қажеттілігіңізді жазыңыз (мысалы: *'1-ші қабат'*, *'9 қабат'*, *'105 комната'*, *'арзан'*):")
 
-user_input = st.sidebar.text_input("Сұраныс жазу:", value=st.session_state.chat_query)
+user_input = st.sidebar.text_input("Сұраныс енгізу:", value=st.session_state.chat_query)
 
 if st.sidebar.button("Іздеуді орындау"):
     st.session_state.chat_query = user_input
@@ -101,11 +185,11 @@ if st.sidebar.button("Барлық бөлмелерді көрсету"):
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🎛️ Қосымша сүзгілер")
 filter_balcony = st.sidebar.selectbox("Балкон жағдайы:", ["Барлығы", "Балконы бар", "Балконы жоқ"])
-max_price = st.sidebar.slider("Максималды баға ($):", 40, 700, 700)
+max_price = st.sidebar.slider("Максималды баға ($):", 40, 750, 750)
 
-# 4. НЕГІЗГІ БЕТ — Бөлмелерді карточкалармен көрсету
-st.title("🏨 Smart Hotel — Нөмірлер Каталогы")
-st.write("Қонақүйдің 100 нөмірі қабаттар бойынша бөлінген (жоғары қабаттарға қарай баға біртіндеп өседі).")
+# 4. НЕГІЗГІ БЕТ — Бөлмелер каталогы
+st.markdown("### 🛏️ Қонақүй нөмірлері (101 — 1010)")
+st.write("Барлық 100 заманауи нөмір қабаттар бойынша реттелген. Жоғары қабаттарға қарай баға біртіндеп өседі.")
 
 # Деректерді сүзу
 filtered = df[df['price_per_night'] <= max_price]
@@ -118,7 +202,6 @@ elif filter_balcony == "Балконы жоқ":
 # ИИ арқылы келген сұрауды талдау
 active_query = st.session_state.chat_query.lower()
 if active_query:
-    # Қабат бойынша іздеу
     floor_match = re.search(r'(\d+)\s*(-ші|-нші|ші|нші)?\s*қабат', active_query)
     if floor_match:
         floor_num = floor_match.group(1)
@@ -143,13 +226,11 @@ if active_query:
         elif floor_num == '10':
             filtered = filtered[filtered['room_type'].str.contains(r'100[1-9]|1010')]
 
-    # Нақты бөлме нөмірін іздеу
     room_num_match = re.search(r'(\d{3,4})', active_query)
     if room_num_match and not floor_match:
         target_num = room_num_match.group(1)
         filtered = filtered[filtered['room_type'].str.contains(target_num)]
     
-    # Адам санын анықтау
     capacity_match = re.search(r'(\d+)\s*(адам|орын|кісі)', active_query)
     if capacity_match:
         cap_val = int(capacity_match.group(1))
@@ -165,11 +246,11 @@ if active_query:
     elif 'балконы бар' in active_query or ('балкон' in active_query and 'жоқ' not in active_query):
         filtered = filtered[filtered['has_balcony'] == 1]
         
-    st.info(f"🤖 ИИ Ассистент түсінді: «{st.session_state.chat_query}» шарттары бойынша ізделінді.")
+    st.info(f"🤖 ИИ Ассистент талдады: «{st.session_state.chat_query}» бойынша нөмірлер сүзілді.")
 
 st.write(f"### 🎯 Табылған нөмірлер саны: {len(filtered)}")
 
-# 5. Нөмірлерді карточкалар түрінде шығару
+# 5. Нөмірлерді заманауи карточкалар түрінде шығару
 if not filtered.empty:
     cols = st.columns(2)
     for index, row in filtered.reset_index().iterrows():
@@ -188,4 +269,4 @@ if not filtered.empty:
                 if st.button(f"Брондау ({row['room_type']})", key=f"book_{row['id']}"):
                     st.success(f"🎉 Құттықтаймыз! Сіз сәтті түрде **{row['room_type']}** нөмірін брондадыңыз!")
 else:
-    st.warning("Өкінішке қарай, бұл талаптарға сай ешқандай нөмір табылмады. Іздеу шарттарын өңгеріп көріңіз.")
+    st.warning("Өкінішке қарай, бұл талаптарға сай ешқандай нөмір табылмады. Іздеу шарттарын өзгертіп көріңіз.")
