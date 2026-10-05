@@ -1,12 +1,13 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
+import random
 import re
 
 st.title("🏨 ИИ арқылы отель нөмірін брондау жүйесі")
-st.write("100 түрлі нөмірі бар ақылды іздеу жүйесі (101, 102, 103...).")
+st.write("100 түрлі бірегей сипаттамасы бар нөмірлер базасы (101-ден 200-ге дейін).")
 
-# 1. 100 нөмірді генерациялау (101-ден 200-ге дейін атау беру)
+# 1. 100 әртүрлі сипаттамасы бар нөмірді генерациялау
 def init_db():
     conn = sqlite3.connect('hotel_system.db')
     cursor = conn.cursor()
@@ -23,7 +24,7 @@ def init_db():
     ''')
     
     room_categories = [
-        ("Standard Single", 40.0, 45.0, 1, 0, "Бір адамға арналған ықшам және қолжетімді стандартты нөмір, балконы жоқ"),
+        ("Standard Single", 40.0, 45.0, 1, 0, "Бір адамға арналған ықшам және қолжетімді стандартты нөмір"),
         ("Standard Double", 65.0, 80.0, 2, 0, "Екі адамға арналған жайлы стандартты нөмір"),
         ("Standard Twin", 70.0, 85.0, 2, 0, "Екі бөлек төсегі бар стандартты бөлме"),
         ("Standard Triple", 90.0, 110.0, 3, 0, "Үш адамдық кең стандартты нөмір"),
@@ -35,24 +36,27 @@ def init_db():
         ("Presidential Suite", 450.0, 600.0, 5, 1, "Жеке террасасы мен барлық элитті жағдайлары бар президенттік нөмір")
     ]
     
+    views = ["Көше жаққа қарайтын терезе", "Ішкі аулаға көрініс", "Қала орталығына бағытталған панорама", "Саябаққа қарайтын тыныш терезе"]
+    amenities = ["кондиционер, Wi-Fi және сейф бар", "шағын тоңазытқыш пен жұмыс үстелімен жабдықталған", "умный дом жүйесі қосылған", "жылытылатын едені бар жайлы бөлме"]
+
     sample_rooms = []
-    room_number = 101  # 101-ден бастаймыз
+    room_number = 101  # 101-ден 200-ге дейін
     
-    while room_number <= 200: # 101 мен 200 аралығы (барлығы 100 бөлме)
+    while room_number <= 200:
         cat_index = (room_number - 101) % len(room_categories)
         base = room_categories[cat_index]
         
-        # Атауы: "101 комната (Standard Single)" немесе жай ғана "101 комната"
         r_type = f"{room_number} комната ({base[0]})"
-        price = round(base[1] + (((room_number - 100) * 3) % 30), 2)
+        price = round(base[1] + (((room_number * 7) % 35)), 2)
         capacity = base[3]
-        balcony = base[4]
-        desc = f"{base[5]}. Таза, жарық және заманауи жабдықталған нөмір."
+        balcony = 1 if base[4] == 1 or (room_number % 2 == 0) else 0
         
-        # Кейбір бөлмелердің балкон қасиетін әртараптандыру
-        if room_number % 4 == 0 and balcony == 1:
-            balcony = 0
-            desc += " (Балконы жоқ нұсқасы)"
+        # Әр бөлмеге әртүрлі уникaлды сипаттама құрастыру
+        v_choice = views[room_number % len(views)]
+        a_choice = amenities[(room_number * 3) % len(amenities)]
+        balc_text = "Жеке балконы бар." if balcony == 1 else "Балконы жоқ."
+        
+        desc = f"{base[5]}. {v_choice}. Ішінде {a_choice}. {balc_text}"
             
         sample_rooms.append((r_type, price, capacity, balcony, desc))
         room_number += 1
@@ -77,7 +81,7 @@ df = get_rooms()
 st.subheader("🤖 ИИ Смарт Іздеу Ассистенті")
 user_query = st.text_input(
     "Қажеттілігіңізді толық жазыңыз:", 
-    placeholder="Мысалы: 101 комната, 4 адамдық, арзан бөлме, балконы жоқ"
+    placeholder="Мысалы: 105 комната, 4 адамдық, арзан бөлме, балконы жоқ"
 )
 
 # Бастапқы DataFrame
@@ -87,7 +91,7 @@ filtered = df.copy()
 if user_query:
     q = user_query.lower()
     
-    # Егер нақты бөлме нөмірін іздесе (мысалы: "105", "112 комната")
+    # Бөлме нөмірін іздеу
     room_num_match = re.search(r'(\d{3})', q)
     if room_num_match:
         target_num = room_num_match.group(1)
@@ -101,11 +105,11 @@ if user_query:
     
     # «Арзан» немесе «бюджетті» сөздерін түсіну
     if 'арзан' in q or 'бюджет' in q or 'тиімді' in q:
-        filtered = filtered[filtered['price_per_night'] <= 80]
+        filtered = filtered[filtered['price_per_night'] <= 70]
         
     # «Қымбат» немесе «люкс» сөздерін түсіну
     elif 'қымбат' in q or 'люкс' in q or 'премиум' in q:
-        filtered = filtered[filtered['price_per_night'] >= 250]
+        filtered = filtered[filtered['price_per_night'] >= 200]
 
     # Бағаны санмен көрсеткенді талдау
     price_match = re.search(r'(\d+)\s*(\$|доллар|тенге|тг)', q)
