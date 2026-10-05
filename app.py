@@ -6,7 +6,7 @@ import re
 # Беттің конфигурациясы
 st.set_page_config(page_title="Smart Hotel — Отель Брондау", page_icon="🏨", layout="wide")
 
-# 1. 100 нөмірді қабаттар бойынша генерациялау базасы (10 қабат, әр қабатта 10 нөмірден)
+# 1. 100 нөмірді қабаттар бойынша және қабат сайын бағасы артатын етіп генерациялау
 def init_db():
     conn = sqlite3.connect('hotel_system.db')
     cursor = conn.cursor()
@@ -23,16 +23,16 @@ def init_db():
     ''')
     
     room_categories = [
-        ("Standard Single", 40.0, 45.0, 1, 0, "Бір адамға арналған ықшам және қолжетімді стандартты нөмір"),
-        ("Standard Double", 65.0, 80.0, 2, 0, "Екі адамға арналған жайлы стандартты нөмір"),
-        ("Standard Twin", 70.0, 85.0, 2, 0, "Екі бөлек төсегі бар стандартты бөлме"),
-        ("Standard Triple", 90.0, 110.0, 3, 0, "Үш адамдық кең стандартты нөмір"),
-        ("Deluxe King", 110.0, 140.0, 2, 1, "Үлкен корольдік төсегі және керемет балконы бар Deluxe нөмір"),
-        ("Deluxe Ocean View", 140.0, 180.0, 2, 1, "Теңізге қарайтын панорамалық көрінісі мен балконы бар Deluxe"),
-        ("Deluxe Quiet Zone", 125.0, 155.0, 2, 1, "Қонақүйдің ең тыныш аймағында орналасқан демалыс бөлмесі"),
-        ("Suite Family", 200.0, 260.0, 4, 1, "Үлкен отбасыға арналған кең люкс нөмір, балконы бар"),
-        ("Executive Suite", 270.0, 350.0, 3, 1, "Бизнес саяхатшыларға арналған жоғары деңгейдегі премиум люкс"),
-        ("Presidential Suite", 450.0, 600.0, 5, 1, "Жеке террасасы мен барлық элитті жағдайлары бар президенттік нөмір")
+        ("Standard Single", 40.0, 1, 0, "Бір адамға арналған ықшам және қолжетімді стандартты нөмір"),
+        ("Standard Double", 60.0, 2, 0, "Екі адамға арналған жайлы стандартты нөмір"),
+        ("Standard Twin", 65.0, 2, 0, "Екі бөлек төсегі бар стандартты бөлме"),
+        ("Standard Triple", 85.0, 3, 0, "Үш адамдық кең стандартты нөмір"),
+        ("Deluxe King", 110.0, 2, 1, "Үлкен корольдік төсегі және керемет балконы бар Deluxe нөмір"),
+        ("Deluxe Ocean View", 135.0, 2, 1, "Теңізге қарайтын панорамалық көрінісі мен балконы бар Deluxe"),
+        ("Deluxe Quiet Zone", 120.0, 2, 1, "Қонақүйдің ең тыныш аймағында орналасқан демалыс бөлмесі"),
+        ("Suite Family", 180.0, 4, 1, "Үлкен отбасыға арналған кең люкс нөмір, балконы бар"),
+        ("Executive Suite", 250.0, 3, 1, "Бизнес саяхатшыларға арналған жоғары деңгейдегі премиум люкс"),
+        ("Presidential Suite", 400.0, 5, 1, "Жеке террасасы мен барлық элитті жағдайлары бар президенттік нөмір")
     ]
     
     views = ["Көше жаққа қарайтын терезе", "Ішкі аулаға көрініс", "Қала орталығына бағытталған панорама", "Саябаққа қарайтын тыныш терезе"]
@@ -43,23 +43,25 @@ def init_db():
     # 10 қабат, әр қабатта 10 нөмір (101-110, 201-210, ..., 1001-1010)
     for floor in range(1, 11):
         for room_idx in range(1, 11):
-            # Егер 10-қабат болса 1001-ден басталады, ал 1-қабат 101-ден
             room_number = floor * 100 + room_idx if floor < 10 else 1000 + room_idx
             
-            cat_index = (room_number % len(room_categories))
+            cat_index = (room_idx - 1) % len(room_categories)
             base = room_categories[cat_index]
+            
+            # Қабат жоғарылаған сайын бағаға үстеме қосылады (әр қабат үшін +$4 немесе +$5)
+            floor_extra = (floor - 1) * 6.0
+            price = round(base[1] + floor_extra + ((room_number * 2) % 10), 2)
             
             floor_name = f"{floor}-ші қабат" if floor < 10 else "10-ші қабат (Пентхаус)"
             r_type = f"{room_number} комната ({base[0]})"
-            price = round(base[1] + ((room_number * 3) % 40), 2)
-            capacity = base[3]
-            balcony = 1 if base[4] == 1 or (room_number % 2 == 0) else 0
+            capacity = base[2]
+            balcony = 1 if base[3] == 1 or (floor >= 5) else 0 # 5-қабаттан жоғарылардың көбінде балкон бар
             
             v_choice = views[room_number % len(views)]
             a_choice = amenities[(room_number * 3) % len(amenities)]
             balc_text = "Жеке балконы бар." if balcony == 1 else "Балконы жоқ."
             
-            desc = f"{floor_name}. {base[5]}. {v_choice}. Ішінде {a_choice}. {balc_text}"
+            desc = f"{floor_name}. {base[4]}. {v_choice}. Ішінде {a_choice}. {balc_text}"
                 
             sample_rooms.append((r_type, price, capacity, balcony, desc))
 
@@ -83,9 +85,9 @@ df = get_rooms()
 if "chat_query" not in st.session_state:
     st.session_state.chat_query = ""
 
-# 3. БҮЙІРЛІК ПАНЕЛЬ — ИИ Ассистент чаты және қосымша сүзгілер
+# 3. БҮЙІРЛІК ПАНЕЛЬ — ИИ Ассистент чаты және сүзгілер
 st.sidebar.markdown("## 🤖 ИИ Ассистент Чаты")
-st.sidebar.write("Қажеттілігіңізді жазыңыз (мысалы: *'1-ші қабат'*, *'105 комната'*, *'4 адамдық'*):")
+st.sidebar.write("Қажеттілігіңізді жазыңыз (мысалы: *'1-ші қабат'*, *'9 қабат'*, *'105 комната'*, *'арзан'*):")
 
 user_input = st.sidebar.text_input("Сұраныс жазу:", value=st.session_state.chat_query)
 
@@ -101,9 +103,9 @@ st.sidebar.markdown("### 🎛️ Қосымша сүзгілер")
 filter_balcony = st.sidebar.selectbox("Балкон жағдайы:", ["Барлығы", "Балконы бар", "Балконы жоқ"])
 max_price = st.sidebar.slider("Максималды баға ($):", 40, 700, 700)
 
-# 4. НЕГІЗГІ БЕТ — Бөлмелерді әдемі карточкалармен көрсету
+# 4. НЕГІЗГІ БЕТ — Бөлмелерді карточкалармен көрсету
 st.title("🏨 Smart Hotel — Нөмірлер Каталогы")
-st.write("Қонақүйіміздің барлық 100 нөмірі қабаттар бойынша реттелген (101-ден бастап 10 қабат).")
+st.write("Қонақүйдің 100 нөмірі қабаттар бойынша бөлінген (жоғары қабаттарға қарай баға біртіндеп өседі).")
 
 # Деректерді сүзу
 filtered = df[df['price_per_night'] <= max_price]
@@ -116,7 +118,7 @@ elif filter_balcony == "Балконы жоқ":
 # ИИ арқылы келген сұрауды талдау
 active_query = st.session_state.chat_query.lower()
 if active_query:
-    # Қабат бойынша іздеу (мысалы: "1 қабат", "1-ші қабат")
+    # Қабат бойынша іздеу
     floor_match = re.search(r'(\d+)\s*(-ші|-нші|ші|нші)?\s*қабат', active_query)
     if floor_match:
         floor_num = floor_match.group(1)
@@ -154,7 +156,7 @@ if active_query:
         filtered = filtered[filtered['capacity'] >= cap_val]
     
     if 'арзан' in active_query or 'бюджет' in active_query or 'тиімді' in active_query:
-        filtered = filtered[filtered['price_per_night'] <= 80]
+        filtered = filtered[filtered['price_per_night'] <= 90]
     elif 'қымбат' in active_query or 'люкс' in active_query or 'премиум' in active_query:
         filtered = filtered[filtered['price_per_night'] >= 200]
 
@@ -167,7 +169,7 @@ if active_query:
 
 st.write(f"### 🎯 Табылған нөмірлер саны: {len(filtered)}")
 
-# 5. Нөмірлерді 2 бағанды әдемі Карточкалар түрінде шығару
+# 5. Нөмірлерді карточкалар түрінде шығару
 if not filtered.empty:
     cols = st.columns(2)
     for index, row in filtered.reset_index().iterrows():
