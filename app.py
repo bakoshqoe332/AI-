@@ -179,3 +179,31 @@ if not st.session_state.logged_in:
                     st.sidebar.error("⚠ Бұл логин қазірдің өзінде тіркелген!")
                 conn.close()
             else:
+                st.sidebar.warning("Барлық міндетті өрістерді толтырыңыз!")
+    else:
+        st.sidebar.subheader("Аккаунтқа кіру")
+        log_user = st.sidebar.text_input("Логин:", key="log_u")
+        log_pass = st.sidebar.text_input("Құпия сөз:", type="password", key="log_p")
+        
+        if st.sidebar.button("Жүйеге кіру"):
+            conn = sqlite3.connect('hotel_system.db')
+            cursor = conn.cursor()
+            cursor.execute("SELECT full_name, password FROM users WHERE username = ?", (log_user,))
+            user = cursor.fetchone()
+            conn.close()
+            
+            if user and user[1] == hash_password(log_pass):
+                st.session_state.logged_in = True
+                st.session_state.username = log_user
+                st.session_state.full_name = user[0]
+                st.sidebar.success(f"Қош келдіңіз, {user[0]}!")
+                st.rerun()
+            else:
+                st.sidebar.error("❌ Логин немесе пароль қате!")
+else:
+    st.sidebar.success(f"Қош келдіңіз, **{st.session_state.full_name}**!")
+    
+    # Жеке кабинеттегі брондаулар тізімін көрсету
+    st.sidebar.markdown("### 📋 Менің брондауларым:")
+    conn = sqlite3.connect('hotel_system.db')
+    user_bookings = pd.read_sql_query("SELECT room_
