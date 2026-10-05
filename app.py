@@ -4,7 +4,7 @@ import pandas as pd
 import re
 
 st.title("🏨 ИИ арқылы отель нөмірін брондау жүйесі")
-st.write("Нағыз ИИ тәрізді сұрауларды (санды, шартты, сипаттаманы) автоматты түрде талдайтын жүйе.")
+st.write("Кез келген сөзді, бағаны және шартты нақты түсінетін ақылды жүйе.")
 
 # 1. Деректер базасы мен 15 нөмірді жасау
 def init_db():
@@ -58,28 +58,35 @@ df = get_rooms()
 st.subheader("🤖 ИИ Смарт Іздеу Ассистенті")
 user_query = st.text_input(
     "Қажеттілігіңізді толық жазыңыз:", 
-    placeholder="Мысалы: 4 адамдық нөмір немесе балконы жоқ тыныш бөлме"
+    placeholder="Мысалы: арзан нөмір, 4 адамдық, балконы жоқ тыныш бөлме"
 )
 
 # Бастапқы DataFrame
 filtered = df.copy()
 
-# 3. Нағыз ИИ тәрізді мәтінді автоматты талдау (Smart NLP Parser)
+# 3. Кеңейтілген ИИ мәтінді талдау логикасы (NLP Parser)
 if user_query:
     q = user_query.lower()
     
-    # Адам санын автоматты түрде анықтау (мысалы: "4 адамдық", "2 орынды", "3 адам")
+    # Адам санын автоматты түрде анықтау (мысалы: "4 адамдық", "2 орынды")
     capacity_match = re.search(r'(\d+)\s*(адам|орын|кісі)', q)
     if capacity_match:
         cap_val = int(capacity_match.group(1))
-        # Нақты сол адам санына тең немесе көбірек нөмірлерді аламыз
         filtered = filtered[filtered['capacity'] >= cap_val]
     
-    # Бағаны автоматты түрде анықтау (мысалы: "100 доллардан кем", "50 доллар")
+    # «Арзан» немесе «бюджетті» сөздерін түсіну (мысалы: бағасы 80 доллардан төмендер)
+    if 'арзан' in q or 'бюджет' in q or 'тиімді' in q:
+        filtered = filtered[filtered['price_per_night'] <= 80]
+        
+    # «Қымбат» немесе «люкс» сөздерін түсіну
+    elif 'қымбат' in q or 'люкс' in q or 'премиум' in q:
+        filtered = filtered[filtered['price_per_night'] >= 200]
+
+    # Бағаны санмен көрсеткенді талдау (мысалы: "100 доллардан арзан")
     price_match = re.search(r'(\d+)\s*(\$|доллар|тенге|тг)', q)
     if price_match:
         price_val = float(price_match.group(1))
-        if 'кем' in q or 'арзан' in q or 'до' in q or 'тек' in q:
+        if 'кем' in q or 'арзан' in q or 'ден төмен' in q or 'до' in q:
             filtered = filtered[filtered['price_per_night'] <= price_val]
 
     # Балкон шарттарын қатаң тексеру
