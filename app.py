@@ -218,7 +218,7 @@ else:
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("## 🤖 ИИ Ассистент Чаты")
-st.sidebar.write("Қажеттілігіңізді жазыңыз (мысалы: *'1-ші қабат'*, *'4 адамға'*, *'арзан'*):")
+st.sidebar.write("Қажеттілігіңізді жазыңыз (мысалы: *'1-ші қабат'*, *'пентхаус'*, *'4 адамға'*, *'арзан'*):")
 
 user_input = st.sidebar.text_input("Сұраныс енгізу:", value=st.session_state.chat_query)
 
@@ -247,40 +247,71 @@ elif filter_balcony == "Балконы жоқ":
 
 active_query = st.session_state.chat_query.lower()
 if active_query:
-    floor_match = re.search(r'(\d+)\s*(-ші|-нші|ші|нші)?\s*қабат', active_query)
-    if floor_match:
-        floor_num = int(floor_match.group(1))
-        if 1 <= floor_num <= 9:
-            valid_rooms = [f"{floor_num}0{i}" for i in range(1, 10)] + [f"{floor_num}10"]
-            pattern = "|".join(valid_rooms)
-            filtered = filtered[filtered['room_type'].str.contains(pattern)]
-        elif floor_num == 10:
-            valid_rooms = [f"100{i}" for i in range(1, 10)] + ["1010"]
-            pattern = "|".join(valid_rooms)
-            filtered = filtered[filtered['room_type'].str.contains(pattern)]
+    if 'пентхаус' in active_query:
+        filtered = filtered[filtered['description'].str.lower().str.contains('пентхаус') | filtered['room_type'].str.contains('10')]
+    else:
+        floor_match = re.search(r'(\d+)\s*(-ші|-нші|ші|нші)?\s*қабат', active_query)
+        if floor_match:
+            floor_num = int(floor_match.group(1))
+            if 1 <= floor_num <= 9:
+                valid_rooms = [f"{floor_num}0{i}" for i in range(1, 10)] + [f"{floor_num}10"]
+                pattern = "|".join(valid_rooms)
+                filtered = filtered[filtered['room_type'].str.contains(pattern)]
+            elif floor_num == 10:
+                valid_rooms = [f"100{i}" for i in range(1, 10)] + ["1010"]
+                pattern = "|".join(valid_rooms)
+                filtered = filtered[filtered['room_type'].str.contains(pattern)]
 
-    room_num_match = re.search(r'(\d{3,4})', active_query)
-    if room_num_match and not floor_match:
-        target_num = room_num_match.group(1)
-        filtered = filtered[filtered['room_type'].str.contains(target_num)]
-    
-    capacity_match = re.search(r'(\d+)\s*(адам|орын|кісі)', active_query)
-    if capacity_match:
-        cap_val = int(capacity_match.group(1))
-        filtered = filtered[filtered['capacity'] >= cap_val]
-    
-    if 'арзан' in active_query or 'бюджет' in active_query or 'тиімді' in active_query:
-        filtered = filtered[filtered['price_per_night'] <= 90]
-    elif 'қымбат' in active_query or 'люкс' in active_query or 'премиум' in active_query:
-        filtered = filtered[filtered['price_per_night'] >= 200]
+        room_num_match = re.search(r'(\d{3,4})', active_query)
+        if room_num_match and not floor_match:
+            target_num = room_num_match.group(1)
+            filtered = filtered[filtered['room_type'].str.contains(target_num)]
+        
+        capacity_match = re.search(r'(\d+)\s*(адам|орын|кісі)', active_query)
+        if capacity_match:
+            cap_val = int(capacity_match.group(1))
+            filtered = filtered[filtered['capacity'] >= cap_val]
+        
+        if 'арзан' in active_query or 'бюджет' in active_query or 'тиімді' in active_query:
+            filtered = filtered[filtered['price_per_night'] <= 90]
+        elif 'қымбат' in active_query or 'люкс' in active_query or 'премиум' in active_query:
+            filtered = filtered[filtered['price_per_night'] >= 200]
 
-    if 'балконы жоқ' in active_query or 'балконсыз' in active_query or 'балкон жоқ' in active_query:
-        filtered = filtered[filtered['has_balcony'] == 0]
-    elif 'балконы бар' in active_query or ('балкон' in active_query and 'жоқ' not in active_query):
-        filtered = filtered[filtered['has_balcony'] == 1]
+        if 'балконы жоқ' in active_query or 'балконсыз' in active_query or 'балкон жоқ' in active_query:
+            filtered = filtered[filtered['has_balcony'] == 0]
+        elif 'балконы бар' in active_query or ('балкон' in active_query and 'жоқ' not in active_query):
+            filtered = filtered[filtered['has_balcony'] == 1]
         
     st.info(f"🤖 ИИ Ассистент талдады: «{st.session_state.chat_query}» бойынша нөмірлер сүзілді.")
 
 st.write(f"### 🎯 Табылған нөмірлер саны: {len(filtered)}")
 
-# 5. Нөмірлерді карточкалар түрінде шығару және Бронда
+# 5. Нөмірлерді карточкалар түрінде шығару және Брондау функциясы
+if not filtered.empty:
+    cols = st.columns(2)
+    for index, row in filtered.reset_index().iterrows():
+        col = cols[index % 2]
+        with col:
+            with st.container(border=True):
+                st.markdown(f"### 🛏️ {row['room_type']}")
+                st.markdown(f"**Сипаттамасы:** {row['description']}")
+                
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Бағасы", f"${row['price_per_night']}")
+                m2.metric("Сиымдылығы", f"{row['capacity']} адам")
+                balc_status = "Иә 🌅" if row['has_balcony'] == 1 else "Жоқ ❌"
+                m3.metric("Балкон", balc_status)
+                
+                if st.button(f"Брондау ({row['room_type']})", key=f"book_{row['id']}"):
+                    if st.session_state.logged_in:
+                        conn = sqlite3.connect('hotel_system.db')
+                        cursor = conn.cursor()
+                        cursor.execute("INSERT INTO bookings (username, room_type, price) VALUES (?, ?, ?)",
+                                       (st.session_state.username, row['room_type'], row['price_per_night']))
+                        conn.commit()
+                        conn.close()
+                        st.success(f"🎉 Құттықтаймыз, {st.session_state.full_name}! Сіз **{row['room_type']}** нөмірін сәтті брондадыңыз. Мәліметтер жеке кабинетіңізге сақталды.")
+                    else:
+                        st.warning("⚠️ Брондау үшін алдымен бүйірлік панельден **Тіркеліп** немесе **Жүйеге кіріңіз**!")
+else:
+    st.warning("Өкінішке қарай, бұл талаптарға сай ешқандай нөмір табылмады. Іздеу шарттарын өзгертіп көріңіз.")
