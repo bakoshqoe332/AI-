@@ -230,4 +230,42 @@ user_input = st.sidebar.text_input("Сұраныс енгізу:", value=st.sess
 if st.sidebar.button("Іздеуді орындау"):
     st.session_state.chat_query = user_input
 
-if
+if st.sidebar.button("Барлық бөлмелерді көрсету"):
+    st.session_state.chat_query = ""
+    st.rerun()
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🎛️ Қосымша сүзгілер")
+filter_balcony = st.sidebar.selectbox("Балкон жағдайы:", ["Барлығы", "Балконы бар", "Балконы жоқ"])
+max_price = st.sidebar.slider("Максималды баға ($):", 40, 850, 850)
+
+# 4. НЕГІЗГІ БЕТ — Бөлмелер каталогы
+st.title("🏨 TRYP Hotel — Брондау жүйесі")
+st.write("Барлық 100 заманауи нөмір қабаттар бойынша реттелген. Жоғары қабаттарға қарай баға логикалық түрде айтарлықтай өседі.")
+
+filtered = df[df['price_per_night'] <= max_price]
+
+if filter_balcony == "Балконы бар":
+    filtered = filtered[filtered['has_balcony'] == 1]
+elif filter_balcony == "Балконы жоқ":
+    filtered = filtered[filtered['has_balcony'] == 0]
+
+active_query = st.session_state.chat_query.lower()
+if active_query:
+    floor_match = re.search(r'(\d+)\s*(-ші|-нші|ші|нші)?\s*қабат', active_query)
+    if floor_match:
+        floor_num = floor_match.group(1)
+        if floor_num == '1':
+            filtered = filtered[filtered['room_type'].str.contains(r'10[1-9]|110')]
+        elif floor_num == '2':
+            filtered = filtered[filtered['room_type'].str.contains(r'20[1-9]|210')]
+        elif floor_num == '3':
+            filtered = filtered[filtered['room_type'].str.contains(r'30[1-9]|310')]
+        elif floor_num == '4':
+            filtered = filtered[filtered['room_type'].str.contains(r'40[1-9]|410')]
+        elif floor_num == '5':
+            filtered = filtered[filtered['room_type'].str.contains(r'50[1-9]|510')]
+        elif floor_num == '6':
+            filtered = filtered[filtered['room_type'].str.contains(r'60[1-9]|610')]
+        elif floor_num == '7':
+            filtered = filtered[filtered['room_type'].str.contains(r'70[1-9]|7
