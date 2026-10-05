@@ -185,4 +185,4 @@ if not st.session_state.logged_in:
         log_user = st.sidebar.text_input("Логин:", key="log_u")
         log_pass = st.sidebar.text_input("Құпия сөз:", type="password", key="log_p")
         
-        if st:
+        if st
