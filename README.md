@@ -65,7 +65,3 @@
 - [Use Case](docs/use-case.md)
 - [Use Case Diagram](docs/diagrams/use-case.md)
 - [Sequence Diagram](docs/diagrams/sequence.md)
-
-## Жоба статусы
-
-Жоба оқу мақсатында әзірленген ақпараттық жүйенің прототипі болып табылады.
