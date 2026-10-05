@@ -3,9 +3,9 @@ import sqlite3
 import pandas as pd
 
 st.title("🏨 ИИ арқылы отель нөмірін брондау жүйесі")
-st.write("Тез әрі ыңғайлы ИИ іздеу жүйесі.")
+st.write("Әрбір сөзіңізді түсінетін ақылды іздеу жүйесі.")
 
-# 1. Деректер базасы мен 15 нөмірді автоматты түрде құру
+# 1. Деректер базасы мен 15 нөмірді жасау
 def init_db():
     conn = sqlite3.connect('hotel_system.db')
     cursor = conn.cursor()
@@ -53,24 +53,46 @@ def get_rooms():
 
 df = get_rooms()
 
-# 2. ИИ арқылы еркін мәтіндік іздеу өрісі
-st.subheader("🤖 ИИ көмегімен қажетті нөмірді іздеу")
-user_query = st.text_input("Қандай нөмір іздеп жатырсыз?", placeholder="Мысалы: Deluxe, балкон, немесе отбасылық")
+# 2. ИИ арқылы еркін мәтінді терең түсіну жолағы
+st.subheader("🤖 ИИ Мәтіндік Ассистенті")
+user_query = st.text_input(
+    "Қажеттілігіңізді толық жазыңыз:", 
+    placeholder="Мысалы: балконы бар, тыныш, отбасылық немесе deluxe нөмір"
+)
 
-# 3. Бүйірлік панель сүзгілері
-st.sidebar.header("🔍 Параметрлер")
+# Бүйірлік панель сүзгілері
+st.sidebar.header("🔍 Қосымша параметрлер")
 max_price = st.sidebar.slider("Максималды баға ($):", 30, 600, 200)
 min_capacity = st.sidebar.slider("Адам саны:", 1, 5, 1)
 
-# Сүзу логикасы
+# Бастапқы сүзу (баға мен адам саны бойынша)
 filtered = df[(df['price_per_night'] <= max_price) & (df['capacity'] >= min_capacity)]
 
+# 3. Мәтіндегі әрбір маңызды сөзді талдау логикасы
 if user_query:
     query_lower = user_query.lower()
-    filtered = filtered[
-        filtered['room_type'].str.lower().str.contains(query_lower) |
-        filtered['description'].str.lower().str.contains(query_lower)
-    ]
+    
+    # Егер сұрауда "балкон" сөзі болса
+    if 'балкон' in query_lower:
+        filtered = filtered[filtered['has_balcony'] == 1]
+        
+    # Егер сұрауда "тыныш" немесе "демалу" сөздері болса
+    if 'тыныш' in query_lower or 'демалу' in query_lower:
+        filtered = filtered[filtered['description'].str.lower().str.contains('тыныш|демалу')]
+        
+    # Егер сұрауда "отбасы" немесе "family" сөздері болса
+    if 'отбасы' in query_lower or 'family' in query_lower:
+        filtered = filtered[filtered['room_type'].str.lower().str.contains('family|suite')]
 
-st.write(f"### 🎯 Табылған нөмірлер ({len(filtered)}):")
-st.dataframe(filtered[['room_type', 'price_per_night', 'capacity', 'has_balcony', 'description']])
+    # Жалпы мәтін бойынша сәйкестік іздеу
+    keywords = query_lower.split()
+    # Егер арнайы сөздерден бөлек басқа да сөздер жазылса, соларды да тексереміз
+    text_filter = filtered['room_type'].str.lower().str.contains('|'.join(keywords)) | \
+                  filtered['description'].str.lower().str.contains('|'.join(keywords))
+    filtered = filtered[text_filter]
+
+st.write(f"### 🎯 Сіздің сұрауыңызға сай табылған нөмірлер ({len(filtered)}):")
+if not filtered.empty:
+    st.dataframe(filtered[['room_type', 'price_per_night', 'capacity', 'has_balcony', 'description']])
+else:
+    st.warning("Өкінішке қарай, бұл сипаттамаға сай ешқандай нөмір табылмады. Басқаша сипаттап көріңіз!")
